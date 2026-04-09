@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -7,11 +8,9 @@ export default function Home() {
       <p className="text-muted-foreground">
         Find grants for your nonprofit in 5 minutes.
       </p>
-      <div className="flex gap-3">
-        <Button>Get Started</Button>
-        <Button variant="outline">Learn More</Button>
-        <Button variant="ghost">Skip</Button>
-      </div>
+      <Link href="/onboarding" className={buttonVariants({ size: "lg" })}>
+        Find Grants for My Nonprofit
+      </Link>
     </main>
   );
 }
