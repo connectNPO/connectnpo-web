@@ -1,0 +1,9 @@
+# 비즈니스 문서 - GitHub Public에 공개하지 않음
+docs/
+
+# Claude Code 로컬 설정
+.claude/
+
+# OS 파일
+.DS_Store
+Thumbs.db
