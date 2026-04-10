@@ -8,10 +8,6 @@ import {
   type NonprofitOrg,
 } from "@/lib/propublica";
 import {
-  getTopGrantRecipients,
-  type SpendingSummary,
-} from "@/lib/usaspending";
-import {
   fetchGrantDetails,
   stripHtml,
   isNonprofitEligible,
@@ -69,8 +65,6 @@ export default async function ResultsPage({
   let hitCount = 0;
   let grantError = false;
   let orgInfo: NonprofitOrg | null = null;
-  let spending: SpendingSummary | null = null;
-
   const grantsPromise = searchGrants({
     keyword,
     rows: PER_PAGE,
@@ -92,16 +86,10 @@ export default async function ResultsPage({
         .catch(() => null)
     : Promise.resolve(null);
 
-  const spendingPromise = getTopGrantRecipients(keyword, 5).catch(
-    () => null
-  );
-
-  const [grantsResult, orgResult, spendingResult] = await Promise.all([
+  const [grantsResult, orgResult] = await Promise.all([
     grantsPromise,
     orgPromise,
-    spendingPromise,
   ]);
-  spending = spendingResult;
 
   if (grantsResult) {
     opportunities = grantsResult.opportunities;
@@ -195,32 +183,7 @@ export default async function ResultsPage({
           </div>
         )}
 
-        {/* Section 2: Who's Getting Funded */}
-        {spending && spending.topRecipients.length > 0 && (
-          <div className="mb-8 rounded-lg border border-border bg-card p-5">
-            <h2 className="text-lg font-semibold">
-              Who&apos;s Getting Funded in &ldquo;{keyword}&rdquo;
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Top grant recipients (2023-2026) from federal sources
-            </p>
-            <div className="mt-4 space-y-2">
-              {spending.topRecipients.map((r, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="truncate mr-4">{r.name}</span>
-                  <span className="font-semibold text-nowrap">
-                    {formatDollars(r.amount)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Section 3: Matching Grants */}
+        {/* Section 2: Matching Grants */}
         {grantError ? (
           <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-6 text-center">
             <p className="font-medium">Unable to load grants right now.</p>
