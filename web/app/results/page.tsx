@@ -1,18 +1,50 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { searchGrants, type GrantOpportunity } from "@/lib/grants";
-import { searchNonprofits, getOrganization, type NonprofitOrg } from "@/lib/propublica";
+import {
+  searchNonprofits,
+  getOrganization,
+  type NonprofitOrg,
+} from "@/lib/propublica";
+import {
+  fetchGrantDetails,
+  stripHtml,
+  isNonprofitEligible,
+  daysUntil,
+  type SimplerGrantDetail,
+} from "@/lib/simpler-grants";
 
 const PER_PAGE = 10;
-
-// 501(c)(3) nonprofit eligibility code
 const NONPROFIT_ELIGIBILITY = "12";
 
 function formatDollars(amount: number): string {
-  if (amount >= 1_000_000_000) return `$${(amount / 1_000_000_000).toFixed(1)}B`;
+  if (amount >= 1_000_000_000)
+    return `$${(amount / 1_000_000_000).toFixed(1)}B`;
   if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
   if (amount >= 1_000) return `$${(amount / 1_000).toFixed(0)}K`;
-  return `$${amount}`;
+  return `$${amount.toLocaleString()}`;
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function fundingRange(
+  floor: number | null,
+  ceiling: number | null
+): string | null {
+  if (floor && ceiling) return `${formatDollars(floor)} - ${formatDollars(ceiling)}`;
+  if (ceiling) return `Up to ${formatDollars(ceiling)}`;
+  if (floor) return `Starting at ${formatDollars(floor)}`;
+  return null;
 }
 
 export default async function ResultsPage({
@@ -26,7 +58,7 @@ export default async function ResultsPage({
   const page = Math.max(1, Number(params.page) || 1);
   const startRecord = (page - 1) * PER_PAGE;
 
-  // Fetch grants and org info in parallel
+  // Step 1: Fetch grants + org info in parallel
   let opportunities: GrantOpportunity[] = [];
   let hitCount = 0;
   let grantError = false;
@@ -53,13 +85,23 @@ export default async function ResultsPage({
         .catch(() => null)
     : Promise.resolve(null);
 
-  const [grantsResult, orgResult] = await Promise.all([grantsPromise, orgPromise]);
+  const [grantsResult, orgResult] = await Promise.all([
+    grantsPromise,
+    orgPromise,
+  ]);
 
   if (grantsResult) {
     opportunities = grantsResult.opportunities;
     hitCount = grantsResult.hitCount;
   }
   orgInfo = orgResult;
+
+  // Step 2: Fetch enriched details from Simpler API
+  let enriched = new Map<string, SimplerGrantDetail>();
+  if (opportunities.length > 0) {
+    const ids = opportunities.map((o) => o.id);
+    enriched = await fetchGrantDetails(ids);
+  }
 
   const totalPages = Math.ceil(hitCount / PER_PAGE);
   const hasPrev = page > 1;
@@ -71,20 +113,26 @@ export default async function ResultsPage({
   }
 
   const latestFiling = orgInfo?.filings?.[0];
+  const currentYear = new Date().getFullYear();
+  const isFilingOutdated =
+    latestFiling && currentYear - latestFiling.tax_prd_yr >= 2;
 
   return (
     <main className="flex min-h-screen flex-col items-center py-16 px-4">
       <div className="w-full max-w-2xl">
+        {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight">
-            Thank You!
+            Your Grant Readiness Report
           </h1>
           <p className="mt-2 text-muted-foreground">
-            We found {hitCount} grants matching &ldquo;{keyword}&rdquo;
+            {orgName
+              ? `Here\u2019s what we found for ${orgName}`
+              : `Grants matching \u201c${keyword}\u201d for 501(c)(3) organizations`}
           </p>
         </div>
 
-        {/* Organization Info from ProPublica */}
+        {/* Section 1: Organization Profile */}
         {orgInfo && (
           <div className="mb-8 rounded-lg border border-border bg-card p-5">
             <h2 className="text-lg font-semibold">{orgInfo.name}</h2>
@@ -114,13 +162,27 @@ export default async function ResultsPage({
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Filing Year</p>
-                  <p className="text-sm font-semibold">{latestFiling.tax_prd_yr}</p>
+                  <p className="text-sm font-semibold">
+                    {latestFiling.tax_prd_yr}
+                  </p>
                 </div>
+              </div>
+            )}
+
+            {isFilingOutdated && (
+              <div className="mt-4 rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm">
+                <span className="font-medium text-yellow-800">
+                  ⚠ Your last 990 filing is from {latestFiling?.tax_prd_yr}.
+                </span>{" "}
+                <span className="text-yellow-700">
+                  Most federal grants require current financial filings.
+                </span>
               </div>
             )}
           </div>
         )}
 
+        {/* Section 2: Matching Grants */}
         {grantError ? (
           <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-6 text-center">
             <p className="font-medium">Unable to load grants right now.</p>
@@ -135,32 +197,125 @@ export default async function ResultsPage({
           </p>
         ) : (
           <>
+            <h2 className="mb-4 text-xl font-semibold">
+              {hitCount} Matching Grants
+            </h2>
+
             <div className="space-y-4">
-              {opportunities.map((grant) => (
-                <div
-                  key={grant.id}
-                  className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/50"
-                >
-                  <a
-                    href={`https://www.grants.gov/search-results-detail/${grant.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-lg font-semibold hover:underline"
+              {opportunities.map((grant) => {
+                const detail = enriched.get(grant.id);
+                const s = detail?.summary;
+                const eligible = s
+                  ? isNonprofitEligible(s.applicant_types)
+                  : null;
+                const funding = s
+                  ? fundingRange(s.award_floor, s.award_ceiling)
+                  : null;
+                const remaining = s ? daysUntil(s.close_date) : null;
+                const description = s?.summary_description
+                  ? stripHtml(s.summary_description)
+                  : null;
+
+                return (
+                  <div
+                    key={grant.id}
+                    className="rounded-lg border border-border bg-card p-5 space-y-3"
                   >
-                    {grant.title}
-                  </a>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {grant.agency}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    {grant.openDate && <span>Opens: {grant.openDate}</span>}
-                    {grant.closeDate && <span>Closes: {grant.closeDate}</span>}
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {grant.oppStatus}
-                    </span>
+                    {/* Title & Agency */}
+                    <div>
+                      <a
+                        href={`https://www.grants.gov/search-results-detail/${grant.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-lg font-semibold hover:underline"
+                      >
+                        {grant.title}
+                      </a>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {detail?.agency_name || grant.agency}
+                      </p>
+                    </div>
+
+                    {/* Description */}
+                    {description && (
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {description.length > 150
+                          ? description.slice(0, 150) + "..."
+                          : description}
+                      </p>
+                    )}
+
+                    {/* Badges */}
+                    <div className="flex flex-wrap gap-2">
+                      {/* Funding */}
+                      {funding && (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 border border-green-200">
+                          {funding}
+                        </span>
+                      )}
+
+                      {/* Eligibility */}
+                      {eligible === true && (
+                        <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+                          ✓ 501(c)(3) Eligible
+                        </span>
+                      )}
+                      {eligible === false && (
+                        <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 border border-red-200">
+                          ✗ Check Eligibility
+                        </span>
+                      )}
+
+                      {/* Cost Sharing */}
+                      {s?.is_cost_sharing && (
+                        <span className="inline-flex items-center rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-medium text-yellow-700 border border-yellow-200">
+                          ⚠ Cost Sharing Required
+                        </span>
+                      )}
+
+                      {/* Deadline */}
+                      {remaining !== null && (
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
+                            remaining <= 14
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : remaining <= 30
+                                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                : "bg-gray-50 text-gray-700 border-gray-200"
+                          }`}
+                        >
+                          {remaining > 0
+                            ? `${remaining} days left`
+                            : remaining === 0
+                              ? "Closes today"
+                              : "Closed"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Dates & Contact */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {(s?.close_date || grant.closeDate) && (
+                        <span>
+                          Deadline:{" "}
+                          {formatDate(s?.close_date ?? null) || grant.closeDate}
+                        </span>
+                      )}
+                      {grant.openDate && (
+                        <span>Posted: {grant.openDate}</span>
+                      )}
+                      {s?.agency_email_address && (
+                        <a
+                          href={`mailto:${s.agency_email_address}`}
+                          className="hover:underline text-primary"
+                        >
+                          {s.agency_email_address}
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Pagination */}
@@ -173,7 +328,12 @@ export default async function ResultsPage({
                   ← Previous
                 </Link>
               ) : (
-                <span className={buttonVariants({ variant: "outline", size: "sm" }) + " pointer-events-none opacity-40"}>
+                <span
+                  className={
+                    buttonVariants({ variant: "outline", size: "sm" }) +
+                    " pointer-events-none opacity-40"
+                  }
+                >
                   ← Previous
                 </span>
               )}
@@ -190,13 +350,58 @@ export default async function ResultsPage({
                   Next →
                 </Link>
               ) : (
-                <span className={buttonVariants({ variant: "outline", size: "sm" }) + " pointer-events-none opacity-40"}>
+                <span
+                  className={
+                    buttonVariants({ variant: "outline", size: "sm" }) +
+                    " pointer-events-none opacity-40"
+                  }
+                >
                   Next →
                 </span>
               )}
             </div>
           </>
         )}
+
+        {/* Section 3: GivingArc CTA */}
+        <div className="mt-10 rounded-lg bg-primary/5 border border-primary/20 p-6">
+          <h2 className="text-xl font-semibold">
+            Get Grant-Ready with GivingArc
+          </h2>
+
+          {isFilingOutdated && (
+            <p className="mt-2 text-sm font-medium text-yellow-800">
+              Your last 990 filing is from {latestFiling?.tax_prd_yr}. Grant
+              applications typically require up-to-date financial records and
+              current IRS filings.
+            </p>
+          )}
+
+          <p className="mt-3 text-sm text-muted-foreground">
+            GivingArc helps nonprofits stay grant-ready with:
+          </p>
+          <ul className="mt-2 space-y-1 text-sm text-muted-foreground list-disc list-inside">
+            <li>Bookkeeping review and cleanup</li>
+            <li>990 tax filing preparation</li>
+            <li>Financial statement preparation for grant applications</li>
+          </ul>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a
+              href="https://givingarc.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button>Request a Free Review</Button>
+            </a>
+            <a
+              href="mailto:info@givingarc.com"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Contact Us
+            </a>
+          </div>
+        </div>
 
         <div className="mt-6 flex justify-center">
           <Link href="/" className={buttonVariants({ variant: "outline" })}>
