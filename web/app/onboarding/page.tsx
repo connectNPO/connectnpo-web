@@ -26,7 +26,7 @@ const US_STATES = [
 
 export default function OnboardingPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center py-16 px-4">
+    <main className="flex min-h-screen flex-col items-center py-16 px-4 bg-muted/30">
       <div className="w-full max-w-xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight">
@@ -37,7 +37,7 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        <form action={submitOnboarding} className="space-y-5">
+        <form action={submitOnboarding} className="space-y-5 rounded-lg border border-border bg-card p-6 sm:p-8">
           <div className="space-y-2">
             <Label htmlFor="name">Organization Name</Label>
             <Input
