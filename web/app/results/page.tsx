@@ -121,7 +121,7 @@ export default async function ResultsPage({
 
   return (
     <main className="flex min-h-screen flex-col items-center py-16 px-4">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-4xl">
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight">
