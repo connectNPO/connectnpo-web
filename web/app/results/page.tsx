@@ -120,7 +120,7 @@ export default async function ResultsPage({
     latestFiling && currentYear - latestFiling.tax_prd_yr >= 2;
 
   return (
-    <main className="flex min-h-screen flex-col items-center py-16 px-4">
+    <main className="flex min-h-screen flex-col items-center py-16 px-4 bg-muted/30">
       <div className="w-full max-w-4xl">
         {/* Header */}
         <div className="mb-8 text-center">
