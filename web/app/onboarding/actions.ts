@@ -27,5 +27,5 @@ export async function submitOnboarding(formData: FormData) {
     throw new Error("Could not save your organization. Please try again.");
   }
 
-  redirect("/onboarding/thank-you");
+  redirect(`/results?focus_area=${encodeURIComponent(payload.focus_area)}`);
 }
