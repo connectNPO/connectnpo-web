@@ -3,11 +3,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { searchGrants, type GrantOpportunity } from "@/lib/grants";
 import {
-  searchNonprofits,
-  getOrganization,
-  type NonprofitOrg,
-} from "@/lib/propublica";
-import {
   fetchGrantDetails,
   stripHtml,
   isNonprofitEligible,
@@ -52,20 +47,28 @@ function fundingRange(
 export default async function ResultsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus_area?: string; page?: string; org?: string }>;
+  searchParams: Promise<{
+    focus_area?: string;
+    page?: string;
+    org?: string;
+    state?: string;
+    budget?: string;
+  }>;
 }) {
   const params = await searchParams;
   const keyword = params.focus_area || "nonprofit";
   const orgName = params.org || "";
+  const orgState = params.state || "";
+  const orgBudget = params.budget || "";
   const page = Math.max(1, Number(params.page) || 1);
   const startRecord = (page - 1) * PER_PAGE;
 
-  // Step 1: Fetch grants + org info in parallel
+  // Fetch grants
   let opportunities: GrantOpportunity[] = [];
   let hitCount = 0;
   let grantError = false;
-  let orgInfo: NonprofitOrg | null = null;
-  const grantsPromise = searchGrants({
+
+  const grantsResult = await searchGrants({
     keyword,
     rows: PER_PAGE,
     startRecord,
@@ -75,27 +78,10 @@ export default async function ResultsPage({
     return null;
   });
 
-  const orgPromise = orgName
-    ? searchNonprofits(orgName)
-        .then(async (results) => {
-          if (results.length > 0) {
-            return getOrganization(results[0].ein);
-          }
-          return null;
-        })
-        .catch(() => null)
-    : Promise.resolve(null);
-
-  const [grantsResult, orgResult] = await Promise.all([
-    grantsPromise,
-    orgPromise,
-  ]);
-
   if (grantsResult) {
     opportunities = grantsResult.opportunities;
     hitCount = grantsResult.hitCount;
   }
-  orgInfo = orgResult;
 
   // Step 2: Fetch enriched details from Simpler API
   let enriched = new Map<string, SimplerGrantDetail>();
@@ -109,14 +95,13 @@ export default async function ResultsPage({
   const hasNext = page < totalPages;
 
   function pageUrl(p: number) {
-    const base = `/results?focus_area=${encodeURIComponent(keyword)}&page=${p}`;
-    return orgName ? `${base}&org=${encodeURIComponent(orgName)}` : base;
+    const q = new URLSearchParams({ focus_area: keyword, page: String(p) });
+    if (orgName) q.set("org", orgName);
+    if (orgState) q.set("state", orgState);
+    if (orgBudget) q.set("budget", orgBudget);
+    return `/results?${q.toString()}`;
   }
 
-  const latestFiling = orgInfo?.filings?.[0];
-  const currentYear = new Date().getFullYear();
-  const isFilingOutdated =
-    latestFiling && currentYear - latestFiling.tax_prd_yr >= 2;
 
   return (
     <main className="flex min-h-screen flex-col items-center py-16 px-4 bg-muted/30">
@@ -133,53 +118,15 @@ export default async function ResultsPage({
           </p>
         </div>
 
-        {/* Section 1: Organization Profile */}
-        {orgInfo && (
+        {/* Section 1: Organization Summary */}
+        {orgName && (
           <div className="mb-8 rounded-lg border border-border bg-card p-5">
-            <h2 className="text-lg font-semibold">{orgInfo.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {orgInfo.city}, {orgInfo.state} &middot; EIN: {orgInfo.ein}
-            </p>
-
-            {latestFiling && (
-              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Revenue</p>
-                  <p className="text-sm font-semibold">
-                    {formatDollars(latestFiling.totrevenue)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Expenses</p>
-                  <p className="text-sm font-semibold">
-                    {formatDollars(latestFiling.totfuncexpns)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Assets</p>
-                  <p className="text-sm font-semibold">
-                    {formatDollars(latestFiling.totassetsend)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Filing Year</p>
-                  <p className="text-sm font-semibold">
-                    {latestFiling.tax_prd_yr}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {isFilingOutdated && (
-              <div className="mt-4 rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm">
-                <span className="font-medium text-yellow-800">
-                  ⚠ Your last 990 filing is from {latestFiling?.tax_prd_yr}.
-                </span>{" "}
-                <span className="text-yellow-700">
-                  Most federal grants require current financial filings.
-                </span>
-              </div>
-            )}
+            <h2 className="text-lg font-semibold">{orgName}</h2>
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+              {orgState && <span>State: {orgState}</span>}
+              {orgBudget && <span>Budget: {orgBudget}</span>}
+              <span>Focus: {keyword}</span>
+            </div>
           </div>
         )}
 
@@ -476,14 +423,6 @@ export default async function ResultsPage({
           <h2 className="text-xl font-semibold">
             Get Grant-Ready with GivingArc
           </h2>
-
-          {isFilingOutdated && (
-            <p className="mt-2 text-sm font-medium text-yellow-800">
-              Your last 990 filing is from {latestFiling?.tax_prd_yr}. Grant
-              applications typically require up-to-date financial records and
-              current IRS filings.
-            </p>
-          )}
 
           <p className="mt-3 text-sm text-muted-foreground">
             GivingArc helps nonprofits stay grant-ready with:
