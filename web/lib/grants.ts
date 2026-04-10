@@ -13,6 +13,7 @@ export interface GrantOpportunity {
 export interface GrantSearchParams {
   keyword: string;
   rows?: number;
+  startRecord?: number;
   oppStatuses?: string;
   fundingCategories?: string;
   eligibilities?: string;
@@ -30,6 +31,7 @@ export async function searchGrants(
   const body = {
     keyword: params.keyword,
     rows: params.rows ?? 10,
+    startRecordNum: params.startRecord ?? 0,
     oppStatuses: params.oppStatuses ?? "posted",
     fundingCategories: params.fundingCategories ?? "",
     eligibilities: params.eligibilities ?? "",

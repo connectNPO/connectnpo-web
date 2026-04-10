@@ -5,15 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { submitOnboarding } from "./actions";
-
-const FOCUS_AREAS = [
-  "Education",
-  "Health",
-  "Environment",
-  "Arts & Culture",
-  "Social Services",
-  "Other",
-];
+import FocusAreaSelect from "./focus-area-select";
 
 const BUDGET_RANGES = [
   "Under $100K",
@@ -78,25 +70,7 @@ export default function OnboardingPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="focus_area">Focus Area</Label>
-            <select
-              id="focus_area"
-              name="focus_area"
-              required
-              defaultValue=""
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="" disabled>
-                Select a focus area
-              </option>
-              {FOCUS_AREAS.map((area) => (
-                <option key={area} value={area}>
-                  {area}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FocusAreaSelect />
 
           <div className="space-y-2">
             <Label htmlFor="annual_budget">Annual Budget</Label>
