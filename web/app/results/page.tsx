@@ -17,7 +17,7 @@ import {
   type SimplerGrantDetail,
 } from "@/lib/simpler-grants";
 
-const PER_PAGE = 10;
+const PER_PAGE = 5;
 const NONPROFIT_ELIGIBILITY = "12";
 
 function formatDollars(amount: number): string {
