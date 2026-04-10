@@ -4,24 +4,37 @@ export interface SimplerGrantSummary {
   applicant_types: string[];
   award_floor: number | null;
   award_ceiling: number | null;
+  estimated_total_program_funding: number | null;
+  expected_number_of_awards: number | null;
   is_cost_sharing: boolean;
   close_date: string | null;
+  close_date_description: string | null;
   post_date: string | null;
   summary_description: string | null;
   applicant_eligibility_description: string | null;
   funding_categories: string[];
   funding_instruments: string[];
   agency_email_address: string | null;
+  agency_contact_description: string | null;
   additional_info_url: string | null;
+}
+
+export interface GrantAttachment {
+  file_name: string;
+  mime_type: string;
+  download_path: string;
 }
 
 export interface SimplerGrantDetail {
   opportunity_id: string;
   opportunity_title: string;
+  opportunity_number: string;
   agency_name: string;
   opportunity_status: string;
+  category: string;
   legacy_opportunity_id: number;
   summary: SimplerGrantSummary;
+  attachments: GrantAttachment[];
 }
 
 /**
@@ -53,11 +66,17 @@ export async function fetchGrantDetail(
     if (!data || !data.summary) return null;
 
     const s = data.summary;
+    const rawAttachments = Array.isArray(data.attachments)
+      ? data.attachments
+      : [];
+
     return {
       opportunity_id: String(data.opportunity_id ?? ""),
       opportunity_title: String(data.opportunity_title ?? ""),
+      opportunity_number: String(data.opportunity_number ?? ""),
       agency_name: String(data.agency_name ?? ""),
       opportunity_status: String(data.opportunity_status ?? ""),
+      category: String(data.category ?? ""),
       legacy_opportunity_id: Number(data.legacy_opportunity_id ?? 0),
       summary: {
         applicant_types: Array.isArray(s.applicant_types)
@@ -65,8 +84,19 @@ export async function fetchGrantDetail(
           : [],
         award_floor: s.award_floor != null ? Number(s.award_floor) : null,
         award_ceiling: s.award_ceiling != null ? Number(s.award_ceiling) : null,
+        estimated_total_program_funding:
+          s.estimated_total_program_funding != null
+            ? Number(s.estimated_total_program_funding)
+            : null,
+        expected_number_of_awards:
+          s.expected_number_of_awards != null
+            ? Number(s.expected_number_of_awards)
+            : null,
         is_cost_sharing: Boolean(s.is_cost_sharing),
         close_date: s.close_date ? String(s.close_date) : null,
+        close_date_description: s.close_date_description
+          ? String(s.close_date_description)
+          : null,
         post_date: s.post_date ? String(s.post_date) : null,
         summary_description: s.summary_description
           ? String(s.summary_description)
@@ -84,10 +114,20 @@ export async function fetchGrantDetail(
         agency_email_address: s.agency_email_address
           ? String(s.agency_email_address)
           : null,
+        agency_contact_description: s.agency_contact_description
+          ? String(s.agency_contact_description)
+          : null,
         additional_info_url: s.additional_info_url
           ? String(s.additional_info_url)
           : null,
       },
+      attachments: rawAttachments.map(
+        (a: Record<string, unknown>) => ({
+          file_name: String(a.file_name ?? ""),
+          mime_type: String(a.mime_type ?? ""),
+          download_path: String(a.download_path ?? ""),
+        })
+      ),
     };
   } catch {
     return null;
@@ -128,6 +168,24 @@ export function stripHtml(html: string): string {
     .replace(/&ndash;/g, "-")
     .replace(/&mdash;/g, "-")
     .trim();
+}
+
+/** Format a funding instrument code into readable text */
+export function formatInstrument(code: string): string {
+  const map: Record<string, string> = {
+    grant: "Grant",
+    cooperative_agreement: "Cooperative Agreement",
+    procurement_contract: "Procurement Contract",
+    other: "Other",
+  };
+  return map[code] || code.replace(/_/g, " ");
+}
+
+/** Format a funding category code into readable text */
+export function formatCategory(code: string): string {
+  return code
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** Check if a grant accepts 501(c)(3) nonprofits */

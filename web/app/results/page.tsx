@@ -12,6 +12,8 @@ import {
   stripHtml,
   isNonprofitEligible,
   daysUntil,
+  formatInstrument,
+  formatCategory,
   type SimplerGrantDetail,
 } from "@/lib/simpler-grants";
 
@@ -216,12 +218,22 @@ export default async function ResultsPage({
                   ? stripHtml(s.summary_description)
                   : null;
 
+                const totalFunding = s?.estimated_total_program_funding;
+                const expectedAwards = s?.expected_number_of_awards;
+                const instruments = s?.funding_instruments ?? [];
+                const categories = s?.funding_categories ?? [];
+                const eligibilityDesc =
+                  s?.applicant_eligibility_description;
+                const closeDesc = s?.close_date_description;
+                const contactName = s?.agency_contact_description;
+                const attachments = detail?.attachments ?? [];
+
                 return (
                   <div
                     key={grant.id}
-                    className="rounded-lg border border-border bg-card p-5 space-y-3"
+                    className="rounded-lg border border-border bg-card p-5 space-y-4"
                   >
-                    {/* Title & Agency */}
+                    {/* Title & Agency & Number */}
                     <div>
                       <a
                         href={`https://www.grants.gov/search-results-detail/${grant.id}`}
@@ -233,28 +245,27 @@ export default async function ResultsPage({
                       </a>
                       <p className="mt-0.5 text-sm text-muted-foreground">
                         {detail?.agency_name || grant.agency}
+                        {detail?.opportunity_number &&
+                          ` · ${detail.opportunity_number}`}
                       </p>
                     </div>
 
                     {/* Description */}
                     {description && (
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        {description.length > 150
-                          ? description.slice(0, 150) + "..."
+                        {description.length > 250
+                          ? description.slice(0, 250) + "..."
                           : description}
                       </p>
                     )}
 
                     {/* Badges */}
                     <div className="flex flex-wrap gap-2">
-                      {/* Funding */}
                       {funding && (
                         <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 border border-green-200">
                           {funding}
                         </span>
                       )}
-
-                      {/* Eligibility */}
                       {eligible === true && (
                         <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
                           ✓ 501(c)(3) Eligible
@@ -265,15 +276,11 @@ export default async function ResultsPage({
                           ✗ Check Eligibility
                         </span>
                       )}
-
-                      {/* Cost Sharing */}
                       {s?.is_cost_sharing && (
                         <span className="inline-flex items-center rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-medium text-yellow-700 border border-yellow-200">
                           ⚠ Cost Sharing Required
                         </span>
                       )}
-
-                      {/* Deadline */}
                       {remaining !== null && (
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
@@ -291,18 +298,110 @@ export default async function ResultsPage({
                               : "Closed"}
                         </span>
                       )}
+                      {instruments.map((inst) => (
+                        <span
+                          key={inst}
+                          className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600 border border-gray-200"
+                        >
+                          {formatInstrument(inst)}
+                        </span>
+                      ))}
                     </div>
 
-                    {/* Dates & Contact */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {(s?.close_date || grant.closeDate) && (
-                        <span>
-                          Deadline:{" "}
-                          {formatDate(s?.close_date ?? null) || grant.closeDate}
-                        </span>
-                      )}
-                      {grant.openDate && (
-                        <span>Posted: {grant.openDate}</span>
+                    {/* Key Details Grid */}
+                    {s && (
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+                        {totalFunding && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Total Program Funding
+                            </p>
+                            <p className="font-medium">
+                              {formatDollars(totalFunding)}
+                            </p>
+                          </div>
+                        )}
+                        {expectedAwards && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Expected Awards
+                            </p>
+                            <p className="font-medium">{expectedAwards}</p>
+                          </div>
+                        )}
+                        {(s.close_date || grant.closeDate) && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Deadline
+                            </p>
+                            <p className="font-medium">
+                              {formatDate(s.close_date ?? null) ||
+                                grant.closeDate}
+                            </p>
+                          </div>
+                        )}
+                        {categories.length > 0 && (
+                          <div className="col-span-2 sm:col-span-3">
+                            <p className="text-xs text-muted-foreground">
+                              Category
+                            </p>
+                            <p className="font-medium">
+                              {categories.map(formatCategory).join(", ")}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Eligibility Details */}
+                    {eligibilityDesc && (
+                      <div className="rounded-md bg-muted/50 p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          Eligibility Requirements
+                        </p>
+                        <p className="text-sm leading-relaxed">
+                          {eligibilityDesc.length > 300
+                            ? eligibilityDesc.slice(0, 300) + "..."
+                            : eligibilityDesc}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Deadline Note */}
+                    {closeDesc && (
+                      <p className="text-xs text-muted-foreground italic">
+                        {closeDesc}
+                      </p>
+                    )}
+
+                    {/* Attachments */}
+                    {attachments.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          Documents ({attachments.length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {attachments.slice(0, 5).map((att) => (
+                            <a
+                              key={att.download_path}
+                              href={att.download_path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center rounded-md bg-muted/50 px-2 py-1 text-xs text-primary hover:underline"
+                            >
+                              {att.file_name.length > 30
+                                ? att.file_name.slice(0, 27) + "..."
+                                : att.file_name}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contact */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground border-t border-border pt-3">
+                      {contactName && (
+                        <span>Contact: {contactName.split("\n")[0]}</span>
                       )}
                       {s?.agency_email_address && (
                         <a
@@ -310,6 +409,16 @@ export default async function ResultsPage({
                           className="hover:underline text-primary"
                         >
                           {s.agency_email_address}
+                        </a>
+                      )}
+                      {s?.additional_info_url && (
+                        <a
+                          href={s.additional_info_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline text-primary"
+                        >
+                          More Info
                         </a>
                       )}
                     </div>
