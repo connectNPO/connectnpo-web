@@ -231,7 +231,7 @@ export default async function ResultsPage({
                 return (
                   <div
                     key={grant.id}
-                    className="rounded-lg border border-border bg-card p-5 space-y-4"
+                    className="rounded-lg border border-border bg-card p-5 space-y-4 transition-shadow hover:shadow-md"
                   >
                     {/* Title & Agency & Number */}
                     <div>
