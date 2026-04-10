@@ -15,6 +15,20 @@ import {
 const PER_PAGE = 5;
 const NONPROFIT_ELIGIBILITY = "12";
 
+// Map focus areas to Grants.gov fundingCategories codes
+const FOCUS_TO_CATEGORY: Record<string, string> = {
+  "Education": "ED",
+  "Health & Healthcare": "HL",
+  "Environment & Conservation": "ENV|NR",
+  "Arts & Culture": "AR|HU",
+  "Social Services": "ISS",
+  "Housing & Homelessness": "HO",
+  "Youth Development": "ED|ISS",
+  "Community Development": "CD",
+  "Civil Rights & Advocacy": "LJL",
+  "Science & Technology": "ST",
+};
+
 function formatDollars(amount: number): string {
   if (amount >= 1_000_000_000)
     return `$${(amount / 1_000_000_000).toFixed(1)}B`;
@@ -68,10 +82,13 @@ export default async function ResultsPage({
   let hitCount = 0;
   let grantError = false;
 
+  const categoryCode = FOCUS_TO_CATEGORY[keyword] ?? "";
+
   const grantsResult = await searchGrants({
-    keyword,
+    keyword: categoryCode ? "" : keyword,
     rows: PER_PAGE,
     startRecord,
+    fundingCategories: categoryCode,
     eligibilities: NONPROFIT_ELIGIBILITY,
   }).catch(() => {
     grantError = true;
