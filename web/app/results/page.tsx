@@ -203,7 +203,7 @@ export default async function ResultsPage({
               {hitCount} Matching Grants
             </h2>
 
-            <div className="space-y-4">
+            <div className="space-y-8">
               {opportunities.map((grant) => {
                 const detail = enriched.get(grant.id);
                 const s = detail?.summary;
