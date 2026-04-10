@@ -17,18 +17,27 @@ const NONPROFIT_ELIGIBILITY = "12";
 
 // Map focus areas to Grants.gov fundingCategories codes
 const FOCUS_TO_CATEGORY: Record<string, string> = {
-  "Education": "ED",
-  "Health & Healthcare": "HL",
-  "Environment & Conservation": "ENV",
-  "Natural Resources": "NR",
-  "Arts & Culture": "AR",
-  "Humanities": "HU",
-  "Social Services": "ISS",
-  "Housing & Homelessness": "HO",
-  "Youth Development": "ED|ISS",
+  "Agriculture": "AG",
+  "Arts": "AR",
+  "Business and Commerce": "BC",
   "Community Development": "CD",
-  "Civil Rights & Advocacy": "LJL",
-  "Science & Technology": "ST",
+  "Consumer Protection": "CP",
+  "Disaster Prevention and Relief": "DPR",
+  "Education": "ED",
+  "Employment, Labor, and Training": "ELT",
+  "Energy": "EN",
+  "Environment": "ENV",
+  "Food and Nutrition": "FN",
+  "Health": "HL",
+  "Housing": "HO",
+  "Humanities": "HU",
+  "Income Security and Social Services": "ISS",
+  "Information and Statistics": "IS",
+  "Law, Justice, and Legal Services": "LJL",
+  "Natural Resources": "NR",
+  "Regional Development": "RD",
+  "Science and Technology": "ST",
+  "Transportation": "T",
 };
 
 function formatDollars(amount: number): string {
