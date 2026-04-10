@@ -19,8 +19,10 @@ const NONPROFIT_ELIGIBILITY = "12";
 const FOCUS_TO_CATEGORY: Record<string, string> = {
   "Education": "ED",
   "Health & Healthcare": "HL",
-  "Environment & Conservation": "ENV|NR",
-  "Arts & Culture": "AR|HU",
+  "Environment & Conservation": "ENV",
+  "Natural Resources": "NR",
+  "Arts & Culture": "AR",
+  "Humanities": "HU",
   "Social Services": "ISS",
   "Housing & Homelessness": "HO",
   "Youth Development": "ED|ISS",
