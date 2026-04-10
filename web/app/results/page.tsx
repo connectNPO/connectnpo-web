@@ -4,6 +4,9 @@ import { searchGrants, type GrantOpportunity } from "@/lib/grants";
 
 const PER_PAGE = 10;
 
+// 501(c)(3) nonprofit eligibility code
+const NONPROFIT_ELIGIBILITY = "12";
+
 export default async function ResultsPage({
   searchParams,
 }: {
@@ -23,6 +26,7 @@ export default async function ResultsPage({
       keyword,
       rows: PER_PAGE,
       startRecord,
+      eligibilities: NONPROFIT_ELIGIBILITY,
     });
     opportunities = result.opportunities;
     hitCount = result.hitCount;
