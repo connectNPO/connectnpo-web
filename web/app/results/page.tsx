@@ -1,46 +1,76 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { searchGrants, type GrantOpportunity } from "@/lib/grants";
+import { searchNonprofits, getOrganization, type NonprofitOrg } from "@/lib/propublica";
 
 const PER_PAGE = 10;
 
 // 501(c)(3) nonprofit eligibility code
 const NONPROFIT_ELIGIBILITY = "12";
 
+function formatDollars(amount: number): string {
+  if (amount >= 1_000_000_000) return `$${(amount / 1_000_000_000).toFixed(1)}B`;
+  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 1_000) return `$${(amount / 1_000).toFixed(0)}K`;
+  return `$${amount}`;
+}
+
 export default async function ResultsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus_area?: string; page?: string }>;
+  searchParams: Promise<{ focus_area?: string; page?: string; org?: string }>;
 }) {
   const params = await searchParams;
   const keyword = params.focus_area || "nonprofit";
+  const orgName = params.org || "";
   const page = Math.max(1, Number(params.page) || 1);
   const startRecord = (page - 1) * PER_PAGE;
 
+  // Fetch grants and org info in parallel
   let opportunities: GrantOpportunity[] = [];
   let hitCount = 0;
-  let error = false;
+  let grantError = false;
+  let orgInfo: NonprofitOrg | null = null;
 
-  try {
-    const result = await searchGrants({
-      keyword,
-      rows: PER_PAGE,
-      startRecord,
-      eligibilities: NONPROFIT_ELIGIBILITY,
-    });
-    opportunities = result.opportunities;
-    hitCount = result.hitCount;
-  } catch {
-    error = true;
+  const grantsPromise = searchGrants({
+    keyword,
+    rows: PER_PAGE,
+    startRecord,
+    eligibilities: NONPROFIT_ELIGIBILITY,
+  }).catch(() => {
+    grantError = true;
+    return null;
+  });
+
+  const orgPromise = orgName
+    ? searchNonprofits(orgName)
+        .then(async (results) => {
+          if (results.length > 0) {
+            return getOrganization(results[0].ein);
+          }
+          return null;
+        })
+        .catch(() => null)
+    : Promise.resolve(null);
+
+  const [grantsResult, orgResult] = await Promise.all([grantsPromise, orgPromise]);
+
+  if (grantsResult) {
+    opportunities = grantsResult.opportunities;
+    hitCount = grantsResult.hitCount;
   }
+  orgInfo = orgResult;
 
   const totalPages = Math.ceil(hitCount / PER_PAGE);
   const hasPrev = page > 1;
   const hasNext = page < totalPages;
 
   function pageUrl(p: number) {
-    return `/results?focus_area=${encodeURIComponent(keyword)}&page=${p}`;
+    const base = `/results?focus_area=${encodeURIComponent(keyword)}&page=${p}`;
+    return orgName ? `${base}&org=${encodeURIComponent(orgName)}` : base;
   }
+
+  const latestFiling = orgInfo?.filings?.[0];
 
   return (
     <main className="flex min-h-screen flex-col items-center py-16 px-4">
@@ -54,7 +84,44 @@ export default async function ResultsPage({
           </p>
         </div>
 
-        {error ? (
+        {/* Organization Info from ProPublica */}
+        {orgInfo && (
+          <div className="mb-8 rounded-lg border border-border bg-card p-5">
+            <h2 className="text-lg font-semibold">{orgInfo.name}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {orgInfo.city}, {orgInfo.state} &middot; EIN: {orgInfo.ein}
+            </p>
+
+            {latestFiling && (
+              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Revenue</p>
+                  <p className="text-sm font-semibold">
+                    {formatDollars(latestFiling.totrevenue)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Expenses</p>
+                  <p className="text-sm font-semibold">
+                    {formatDollars(latestFiling.totfuncexpns)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Assets</p>
+                  <p className="text-sm font-semibold">
+                    {formatDollars(latestFiling.totassetsend)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Filing Year</p>
+                  <p className="text-sm font-semibold">{latestFiling.tax_prd_yr}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {grantError ? (
           <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-6 text-center">
             <p className="font-medium">Unable to load grants right now.</p>
             <p className="mt-1 text-sm text-muted-foreground">
