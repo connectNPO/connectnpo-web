@@ -1,6 +1,10 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error("RESEND_API_KEY not set");
+  return new Resend(key);
+}
 
 // Resend free plan: send from onboarding@resend.dev
 // After adding a custom domain in Resend, change to your own (e.g. grants@connectnpo.com)
@@ -97,6 +101,7 @@ export async function sendGrantAlert(
 </html>`;
 
   try {
+    const resend = getResend();
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
