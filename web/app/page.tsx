@@ -17,7 +17,7 @@ export default function Home() {
           checks, funding details, and deadlines — in under 2 minutes.
         </p>
         <Link
-          href="/onboarding"
+          href="/search"
           className={buttonVariants({ size: "lg" }) + " mt-2 text-base px-8"}
         >
           Get Your Free Report
@@ -112,7 +112,7 @@ export default function Home() {
             100% free. No credit card. No login required.
           </p>
           <Link
-            href="/onboarding"
+            href="/search"
             className={
               buttonVariants({ size: "lg" }) + " mt-6 text-base px-8"
             }
