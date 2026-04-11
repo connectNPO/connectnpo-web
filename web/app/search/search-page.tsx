@@ -298,7 +298,7 @@ export default function SearchPage() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 bg-muted/15">
+      <main className="flex-1 p-6" style={{ backgroundColor: "#F8F8F6" }}>
         {!submitted ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center max-w-md">
