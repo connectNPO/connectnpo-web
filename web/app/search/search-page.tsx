@@ -320,26 +320,51 @@ export default function SearchPage() {
             <p className="font-medium">{error}</p>
           </div>
         ) : (
-          <div className="max-w-4xl">
+          <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  {hitCount} Matching Grants
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {category} · 501(c)(3) eligible
-                </p>
-              </div>
-              {grants.length > 0 && (
+            <div className="mb-2">
+              <h2 className="text-2xl font-bold tracking-tight text-center">
+                {hitCount} Matching Grants
+              </h2>
+              <p className="text-sm text-muted-foreground text-center">
+                {category} · 501(c)(3) eligible
+              </p>
+            </div>
+
+            {/* Controls: CSV + Pagination (top) */}
+            {grants.length > 0 && (
+              <div className="flex items-center justify-between mb-6 mt-4">
                 <Button variant="outline" size="sm" onClick={downloadCSV}>
                   Download CSV
                 </Button>
-              )}
-            </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => handlePageChange(page - 1)}
+                    >
+                      ←
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {page} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages}
+                      onClick={() => handlePageChange(page + 1)}
+                    >
+                      →
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {loading && (
-              <p className="mb-4 text-sm text-muted-foreground">
+              <p className="mb-4 text-sm text-muted-foreground text-center">
                 Updating results...
               </p>
             )}
