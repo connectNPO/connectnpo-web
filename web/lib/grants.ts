@@ -32,7 +32,7 @@ export async function searchGrants(
     keyword: params.keyword,
     rows: params.rows ?? 10,
     startRecordNum: params.startRecord ?? 0,
-    oppStatuses: params.oppStatuses ?? "posted",
+    oppStatuses: params.oppStatuses ?? "posted|forecasted",
     fundingCategories: params.fundingCategories ?? "",
     eligibilities: params.eligibilities ?? "",
     agencies: params.agencies ?? "",
