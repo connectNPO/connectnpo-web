@@ -35,6 +35,7 @@ export default function HomePage() {
   function handleReset() {
     setWorkbook(null);
     sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem('financial-dashboard-ai-results');
   }
 
   if (!hydrated) {
