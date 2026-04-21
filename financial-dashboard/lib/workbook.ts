@@ -34,9 +34,15 @@ function sheetToRows(ws: ExcelJS.Worksheet): Row[] {
   return rows;
 }
 
-export async function parseWorkbook(filePath: string): Promise<WorkbookResult> {
+export async function parseWorkbook(source: string | Buffer | ArrayBuffer): Promise<WorkbookResult> {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.readFile(filePath);
+  if (typeof source === 'string') {
+    await wb.xlsx.readFile(source);
+  } else if (source instanceof ArrayBuffer) {
+    await wb.xlsx.load(source);
+  } else {
+    await wb.xlsx.load(source);
+  }
 
   const reports: ParsedReport[] = [];
 
@@ -75,7 +81,7 @@ export async function parseWorkbook(filePath: string): Promise<WorkbookResult> {
   const derivedMetrics = deriveMetrics(reports);
 
   return {
-    sourceFile: filePath,
+    sourceFile: typeof source === 'string' ? source : 'uploaded',
     parsedAt: new Date().toISOString(),
     reports,
     derivedMetrics,

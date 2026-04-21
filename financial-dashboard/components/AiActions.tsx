@@ -1,9 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import type { WorkbookResult } from '@/lib/types';
 
 type ActionType = 'executive-summary' | 'board-qa' | 'chart-explanations';
 type Status = 'idle' | 'loading' | 'success' | 'error';
+
+interface AiActionsProps {
+  workbook: WorkbookResult;
+}
 
 interface ActionConfig {
   type: ActionType;
@@ -41,7 +46,7 @@ interface ResultState {
   model: string;
 }
 
-export function AiActions() {
+export function AiActions({ workbook }: AiActionsProps) {
   const [status, setStatus] = useState<Status>('idle');
   const [loadingType, setLoadingType] = useState<ActionType | null>(null);
   const [result, setResult] = useState<ResultState | null>(null);
@@ -53,7 +58,11 @@ export function AiActions() {
     setError('');
 
     try {
-      const response = await fetch(action.endpoint, { method: 'POST' });
+      const response = await fetch(action.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(workbook),
+      });
       const data = await response.json();
 
       if (!response.ok) {

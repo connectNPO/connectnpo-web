@@ -1,20 +1,18 @@
-import path from 'node:path';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { parseWorkbook } from './workbook';
 import { extractSummaryInput } from './ai-prompts';
+import type { WorkbookResult } from './types';
 
 interface GenerateOptions {
   systemPrompt: string;
-  userPromptBuilder: (input: ReturnType<typeof extractSummaryInput> & {}) => string;
+  userPromptBuilder: (input: NonNullable<ReturnType<typeof extractSummaryInput>>) => string;
   maxTokens?: number;
 }
 
-export async function generateAiResponse({
-  systemPrompt,
-  userPromptBuilder,
-  maxTokens = 2048,
-}: GenerateOptions): Promise<NextResponse> {
+export async function generateAiResponse(
+  request: NextRequest,
+  { systemPrompt, userPromptBuilder, maxTokens = 2048 }: GenerateOptions,
+): Promise<NextResponse> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -28,20 +26,34 @@ export async function generateAiResponse({
 
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
 
+  let workbook: WorkbookResult;
   try {
-    const samplePath = path.join(process.cwd(), 'samples', 'abc-org-july-march-2026.xlsx');
-    const workbook = await parseWorkbook(samplePath);
-    const summaryInput = extractSummaryInput(workbook.reports, workbook.derivedMetrics ?? {});
+    workbook = (await request.json()) as WorkbookResult;
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid request body. Expected parsed workbook JSON.' },
+      { status: 400 },
+    );
+  }
 
-    if (!summaryInput) {
-      return NextResponse.json(
-        { error: 'Unable to extract organization or period from the uploaded data.' },
-        { status: 400 },
-      );
-    }
+  if (!workbook || !Array.isArray(workbook.reports)) {
+    return NextResponse.json(
+      { error: 'Request body is missing parsed workbook data.' },
+      { status: 400 },
+    );
+  }
 
-    const userPrompt = userPromptBuilder(summaryInput);
+  const summaryInput = extractSummaryInput(workbook.reports, workbook.derivedMetrics ?? {});
+  if (!summaryInput) {
+    return NextResponse.json(
+      { error: 'Unable to extract organization or period from the uploaded data.' },
+      { status: 400 },
+    );
+  }
 
+  const userPrompt = userPromptBuilder(summaryInput);
+
+  try {
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
