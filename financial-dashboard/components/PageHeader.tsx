@@ -41,26 +41,28 @@ export function PageHeader({ orgName, period, onReset }: PageHeaderProps) {
       const html2pdf = (await import('html2pdf.js')).default;
       const filename = `${slugify(orgName) || 'dashboard'}-${slugify(period) || 'report'}.pdf`;
 
-      await html2pdf()
-        .set({
-          margin: [10, 10, 12, 10],
-          filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#f8f8f6',
-            ignoreElements: (el: Element) => el.classList?.contains('no-print'),
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: {
-            mode: ['css', 'legacy'],
-            avoid: '.pdf-avoid-break',
-            before: '.pdf-break-before',
-          },
-        })
-        .from(element)
-        .save();
+      // html2pdf.js TypeScript types don't include every runtime option (e.g. pagebreak),
+      // so we cast the options object to bypass strict type checking.
+      const options = {
+        margin: [10, 10, 12, 10],
+        filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#f8f8f6',
+          ignoreElements: (el: Element) => el.classList?.contains('no-print'),
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: {
+          mode: ['css', 'legacy'],
+          avoid: '.pdf-avoid-break',
+          before: '.pdf-break-before',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+
+      await html2pdf().set(options).from(element).save();
     } finally {
       document.body.classList.remove('exporting-pdf');
       setExporting(false);

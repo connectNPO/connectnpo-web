@@ -38,10 +38,10 @@ export async function parseWorkbook(source: string | Buffer | ArrayBuffer): Prom
   const wb = new ExcelJS.Workbook();
   if (typeof source === 'string') {
     await wb.xlsx.readFile(source);
-  } else if (source instanceof ArrayBuffer) {
-    await wb.xlsx.load(source);
   } else {
-    await wb.xlsx.load(source);
+    // ExcelJS Buffer type is older than Node 22 Buffer<ArrayBufferLike>; cast to bypass.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await wb.xlsx.load(source as any);
   }
 
   const reports: ParsedReport[] = [];
