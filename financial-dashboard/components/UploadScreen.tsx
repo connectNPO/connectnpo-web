@@ -1,6 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import type { WorkbookResult } from '@/lib/types';
 
 interface UploadScreenProps {
@@ -8,10 +10,26 @@ interface UploadScreenProps {
 }
 
 export function UploadScreen({ onParsed }: UploadScreenProps) {
+  const router = useRouter();
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) setUserEmail(data.user.email);
+    });
+  }, []);
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  }
 
   async function handleFile(file: File) {
     setError('');
@@ -34,7 +52,24 @@ export function UploadScreen({ onParsed }: UploadScreenProps) {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
+    <main className="min-h-screen flex flex-col">
+      <div className="border-b border-border">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-end gap-3">
+          {userEmail && (
+            <span className="text-xs text-muted" title={userEmail}>
+              {userEmail}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="text-sm text-muted hover:text-foreground transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 flex items-center justify-center px-6">
       <div className="w-full max-w-xl">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-foreground">Financial Dashboard</h1>
@@ -97,32 +132,35 @@ export function UploadScreen({ onParsed }: UploadScreenProps) {
           </div>
         )}
 
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={async () => {
-              setError('');
-              setUploading(true);
-              try {
-                const response = await fetch('/api/sample');
-                const data = await response.json();
-                if (!response.ok) {
-                  setError(data.error ?? 'Failed to load sample.');
-                  return;
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={async () => {
+                setError('');
+                setUploading(true);
+                try {
+                  const response = await fetch('/api/sample');
+                  const data = await response.json();
+                  if (!response.ok) {
+                    setError(data.error ?? 'Failed to load sample.');
+                    return;
+                  }
+                  onParsed(data as WorkbookResult);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Failed to load sample.');
+                } finally {
+                  setUploading(false);
                 }
-                onParsed(data as WorkbookResult);
-              } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to load sample.');
-              } finally {
-                setUploading(false);
-              }
-            }}
-            className="text-xs text-muted underline hover:text-foreground"
-            disabled={uploading}
-          >
-            Or try with sample data (ABC Organization)
-          </button>
-        </div>
+              }}
+              className="text-xs text-muted underline hover:text-foreground"
+              disabled={uploading}
+            >
+              Or try with sample data (dev only)
+            </button>
+          </div>
+        )}
+      </div>
       </div>
     </main>
   );

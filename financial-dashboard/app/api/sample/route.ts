@@ -5,6 +5,12 @@ import { parseWorkbook } from '@/lib/workbook';
 export const runtime = 'nodejs';
 
 export async function GET() {
+  // Sample data is only available in development — hidden in production
+  // to keep demo data out of real client dashboards.
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   try {
     const samplePath = path.join(process.cwd(), 'samples', 'abc-org-july-march-2026.xlsx');
     const result = await parseWorkbook(samplePath);

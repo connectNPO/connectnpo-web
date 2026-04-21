@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 interface PageHeaderProps {
   orgName: string;
@@ -16,7 +18,16 @@ function slugify(text: string): string {
 }
 
 export function PageHeader({ orgName, period, onReset }: PageHeaderProps) {
+  const router = useRouter();
   const [exporting, setExporting] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) setUserEmail(data.user.email);
+    });
+  }, []);
 
   async function handleExport() {
     if (exporting) return;
@@ -56,14 +67,26 @@ export function PageHeader({ orgName, period, onReset }: PageHeaderProps) {
     }
   }
 
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  }
+
   return (
     <header className="border-b border-border pdf-avoid-break">
-      <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">{orgName}</h1>
-          <p className="text-sm text-muted mt-0.5">{period}</p>
+      <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-foreground truncate">{orgName}</h1>
+          <p className="text-sm text-muted mt-0.5 truncate">{period}</p>
         </div>
-        <div className="flex items-center gap-2 no-print">
+        <div className="flex items-center gap-2 no-print shrink-0">
+          {userEmail && (
+            <span className="hidden md:inline text-xs text-muted mr-2" title={userEmail}>
+              {userEmail}
+            </span>
+          )}
           {onReset && (
             <button
               type="button"
@@ -80,6 +103,14 @@ export function PageHeader({ orgName, period, onReset }: PageHeaderProps) {
             className="text-sm bg-foreground text-white rounded-lg px-3 py-1.5 hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {exporting ? 'Generating PDF…' : 'Download PDF'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="text-sm text-muted hover:text-foreground transition-colors px-2"
+            title="Sign out"
+          >
+            Sign out
           </button>
         </div>
       </div>
