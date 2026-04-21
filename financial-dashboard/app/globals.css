@@ -18,3 +18,43 @@ body {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 1.2cm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .no-print,
+  button {
+    display: none !important;
+  }
+
+  header {
+    border-bottom: 1px solid #eaeaea !important;
+    page-break-inside: avoid;
+  }
+
+  /* Force single-column layout so cards stack cleanly at A4 */
+  .print\:single-col {
+    display: block !important;
+  }
+  .print\:single-col > * {
+    margin-bottom: 0.5cm;
+    page-break-inside: avoid;
+  }
+
+  /* AI result cards get their own page to breathe */
+  .print\:break-before {
+    page-break-before: always;
+  }
+}

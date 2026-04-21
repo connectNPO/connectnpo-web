@@ -66,10 +66,14 @@ export function deriveMetrics(reports: ParsedReport[]): DerivedMetrics {
   }
 
   if (plByClass?.functionalExpenseRatio) {
+    const fer = plByClass.functionalExpenseRatio;
     metrics.functionalRatios = {
-      program: plByClass.functionalExpenseRatio.program,
-      admin: plByClass.functionalExpenseRatio.admin,
-      fundraising: plByClass.functionalExpenseRatio.fundraising,
+      program: fer.program,
+      admin: fer.admin,
+      fundraising: fer.fundraising,
+      programAmount: fer.program * fer.totalExpenses,
+      adminAmount: fer.admin * fer.totalExpenses,
+      fundraisingAmount: fer.fundraising * fer.totalExpenses,
     };
   }
 

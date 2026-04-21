@@ -1,6 +1,6 @@
 import { KpiCard } from '@/components/KpiCard';
-import { RatioBar } from '@/components/RatioBar';
-import { ProjectTable } from '@/components/ProjectTable';
+import { RatioBar, type RatioItem } from '@/components/RatioBar';
+import { ProjectTable, type Project } from '@/components/ProjectTable';
 import { PageHeader } from '@/components/PageHeader';
 import { AiActions } from '@/components/AiActions';
 import { formatCurrency, formatMultiplier, formatNumber } from '@/lib/format';
@@ -8,6 +8,7 @@ import type {
   BalanceSheet,
   ProfitLoss,
   ProfitLossByClass,
+  ProjectProfitLoss,
   WorkbookResult,
 } from '@/lib/types';
 
@@ -24,6 +25,9 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
   const plClass = workbook.reports.find((r) => r.type === 'profit_loss_by_class') as
     | ProfitLossByClass
     | undefined;
+  const projects = workbook.reports.filter(
+    (r) => r.type === 'project_profit_loss',
+  ) as ProjectProfitLoss[];
 
   const orgName = bs?.meta.orgName ?? pl?.meta.orgName ?? plClass?.meta.orgName ?? 'Organization';
   const period = pl?.meta.periodLabel ?? bs?.meta.periodLabel ?? plClass?.meta.periodLabel ?? '';
@@ -44,15 +48,55 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
         ? 'negative'
         : 'neutral';
 
-  const functionalItems = m.functionalRatios
+  // --- Functional Expense breakdowns from P&L by Class ---
+  const expenseBreakdown = (classPatterns: RegExp[]) => {
+    if (!plClass) return undefined;
+    const relevantClasses = plClass.classes.filter((c) =>
+      classPatterns.some((p) => p.test(c)) && !/total/i.test(c),
+    );
+    if (relevantClasses.length === 0) return undefined;
+
+    const expenseRows = plClass.rows.filter(
+      (r) => !r.isSubtotal && r.accountNumber && r.accountNumber.startsWith('5'),
+    );
+
+    const lines: { label: string; amount: number }[] = [];
+    for (const row of expenseRows) {
+      let total = 0;
+      for (const cls of relevantClasses) {
+        const v = row.byClass[cls];
+        if (typeof v === 'number') total += v;
+      }
+      if (total > 0) lines.push({ label: row.accountName, amount: total });
+    }
+    return lines.sort((a, b) => b.amount - a.amount);
+  };
+
+  const programBreakdown = expenseBreakdown([/^100 Programs$/, /^110 /, /^120 /, /^130 /]);
+  const adminBreakdown = expenseBreakdown([/management|general|admin/i]);
+  const fundraisingBreakdown = expenseBreakdown([/fundraising/i]);
+
+  const functionalItems: RatioItem[] = m.functionalRatios
     ? [
         {
-          label: 'Program Services',
+          label: 'Program Expenses',
           value: m.functionalRatios.program,
-          tone: 'positive' as const,
+          amount: m.functionalRatios.programAmount,
+          tone: 'positive',
+          breakdown: programBreakdown,
         },
-        { label: 'Management & General', value: m.functionalRatios.admin },
-        { label: 'Fundraising', value: m.functionalRatios.fundraising },
+        {
+          label: 'Management & General',
+          value: m.functionalRatios.admin,
+          amount: m.functionalRatios.adminAmount,
+          breakdown: adminBreakdown,
+        },
+        {
+          label: 'Fundraising',
+          value: m.functionalRatios.fundraising,
+          amount: m.functionalRatios.fundraisingAmount,
+          breakdown: fundraisingBreakdown,
+        },
       ]
     : [];
 
@@ -72,32 +116,46 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
         : 'warning'
     : 'neutral';
 
-  const revenueItems: { label: string; value: number; tone?: 'neutral' | 'warning' }[] = [];
+  // --- Revenue composition ---
+  const revenueItems: RatioItem[] = [];
   if (pl) {
     const restricted = pl.revenue.find((l) => /temporary restricted/i.test(l.accountName));
     const unrestricted = pl.revenue.find((l) => /unrestricted/i.test(l.accountName));
-    const programFees = pl.revenue.find(
-      (l) => /program service fees/i.test(l.accountName) && l.isSubtotal,
+    const programFeesSubtotal = pl.revenue.find(
+      (l) => l.isSubtotal && /program service fees/i.test(l.accountName),
+    );
+    const programFeesChildren = pl.revenue.filter(
+      (l) => !l.isSubtotal && l.accountNumber?.startsWith('42') && l.amount > 0,
     );
     const totalRev = pl.totals.totalRevenue;
+
     if (totalRev > 0) {
       if (restricted) {
         revenueItems.push({
           label: 'Restricted Contributions',
           value: restricted.amount / totalRev,
+          amount: restricted.amount,
           tone: 'warning',
+          breakdown: [{ label: restricted.accountName, amount: restricted.amount }],
         });
       }
       if (unrestricted) {
         revenueItems.push({
           label: 'Unrestricted Contributions',
           value: unrestricted.amount / totalRev,
+          amount: unrestricted.amount,
+          breakdown: [{ label: unrestricted.accountName, amount: unrestricted.amount }],
         });
       }
-      if (programFees) {
+      if (programFeesSubtotal && programFeesSubtotal.amount > 0) {
         revenueItems.push({
           label: 'Program Service Fees',
-          value: programFees.amount / totalRev,
+          value: programFeesSubtotal.amount / totalRev,
+          amount: programFeesSubtotal.amount,
+          breakdown: programFeesChildren.map((l) => ({
+            label: l.accountName,
+            amount: l.amount,
+          })),
         });
       }
     }
@@ -109,11 +167,33 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
       ? `Heavy grant dependency — ${Math.round(restrictedPct * 100)}% of revenue is donor-restricted`
       : undefined;
 
+  // --- Project Profitability breakdowns ---
+  const projectsWithBreakdown: Project[] = (m.projectProfitability ?? []).map((p) => {
+    const match = projects.find(
+      (proj) => (proj.meta.projectName || proj.meta.orgName) === p.name,
+    );
+    if (!match) return p;
+    return {
+      ...p,
+      breakdown: {
+        revenue: match.revenue
+          .filter((l) => !l.isSubtotal && l.amount > 0)
+          .map((l) => ({ label: l.accountName, amount: l.amount })),
+        expenditures: match.expenditures
+          .filter((l) => !l.isSubtotal && l.amount > 0)
+          .map((l) => ({ label: l.accountName, amount: l.amount })),
+        totalRevenue: match.totals.totalRevenue,
+        totalExpenditures: match.totals.totalExpenditures,
+        netRevenue: match.totals.netRevenue,
+      },
+    };
+  });
+
   return (
     <main className="min-h-screen bg-white">
       <PageHeader orgName={orgName} period={period} onReset={onReset} />
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 print:single-col">
           <KpiCard
             label="Cash on hand"
             value={formatCurrency(m.cashOnHand)}
@@ -128,7 +208,7 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
           />
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 print:single-col">
           {functionalItems.length > 0 && (
             <RatioBar
               title="Functional Expenses (990 Part IX)"
@@ -147,13 +227,13 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
           )}
         </section>
 
-        {m.projectProfitability && m.projectProfitability.length > 0 && (
+        {projectsWithBreakdown.length > 0 && (
           <section>
-            <ProjectTable projects={m.projectProfitability} />
+            <ProjectTable projects={projectsWithBreakdown} />
           </section>
         )}
 
-        <section className="pt-2">
+        <section className="pt-2 print:break-before">
           <AiActions workbook={workbook} />
         </section>
       </div>

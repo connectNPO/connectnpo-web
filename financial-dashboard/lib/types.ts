@@ -125,6 +125,9 @@ export interface DerivedMetrics {
     program: number;
     admin: number;
     fundraising: number;
+    programAmount: number;
+    adminAmount: number;
+    fundraisingAmount: number;
   };
   monthlyBurnRate?: number;
   monthsOfRunway?: number;

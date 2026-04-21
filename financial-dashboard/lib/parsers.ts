@@ -198,15 +198,18 @@ export function parseProfitLoss(rows: Row[], sheetName: string): ProfitLoss {
     if (label === 'Other Expenditures') { section = 'other_expenditures'; continue; }
     if (label === 'Cost of Goods Sold') continue;
 
-    if (label === 'Total for Revenue') {
+    if (label === 'Total for Revenue' || label === 'Total Revenue') {
       result.totals.totalRevenue = toNumber(amount);
       continue;
     }
     if (label === 'Gross Profit') {
       result.totals.grossProfit = toNumber(amount);
+      if (result.totals.totalRevenue === 0) {
+        result.totals.totalRevenue = toNumber(amount);
+      }
       continue;
     }
-    if (label === 'Total for Expenditures') {
+    if (label === 'Total for Expenditures' || label === 'Total Expenditures') {
       result.totals.totalExpenditures = toNumber(amount);
       continue;
     }
@@ -214,11 +217,11 @@ export function parseProfitLoss(rows: Row[], sheetName: string): ProfitLoss {
       result.totals.netOperatingRevenue = toNumber(amount);
       continue;
     }
-    if (label === 'Total for Other Revenue') {
+    if (label === 'Total for Other Revenue' || label === 'Total Other Revenue') {
       result.totals.totalOtherRevenue = toNumber(amount);
       continue;
     }
-    if (label === 'Total for Other Expenditures') {
+    if (label === 'Total for Other Expenditures' || label === 'Total Other Expenditures') {
       result.totals.totalOtherExpenditures = toNumber(amount);
       continue;
     }
@@ -250,11 +253,11 @@ export function parseProjectProfitLoss(rows: Row[], sheetName: string): ProjectP
   return {
     type: 'project_profit_loss',
     meta: pl.meta,
-    revenue: pl.revenue,
-    expenditures: pl.expenditures,
+    revenue: [...pl.revenue, ...pl.otherRevenue],
+    expenditures: [...pl.expenditures, ...pl.otherExpenditures],
     totals: {
-      totalRevenue: pl.totals.totalRevenue,
-      totalExpenditures: pl.totals.totalExpenditures,
+      totalRevenue: pl.totals.totalRevenue + pl.totals.totalOtherRevenue,
+      totalExpenditures: pl.totals.totalExpenditures + pl.totals.totalOtherExpenditures,
       netRevenue: pl.totals.netRevenue,
     },
   };

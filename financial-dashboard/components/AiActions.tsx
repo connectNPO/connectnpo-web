@@ -85,7 +85,7 @@ export function AiActions({ workbook }: AiActionsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 no-print">
         {ACTIONS.map((action) => {
           const isLoading = loadingType === action.type;
           const isActive = result?.type === action.type && status === 'success';
@@ -133,7 +133,7 @@ export function AiActions({ workbook }: AiActionsProps) {
             {result.model && <div className="text-xs text-muted">{result.model}</div>}
           </div>
           <MarkdownRenderer text={result.text} />
-          <div className="mt-5 flex gap-2">
+          <div className="mt-5 flex gap-2 no-print">
             <button
               type="button"
               onClick={() => navigator.clipboard.writeText(result.text)}
