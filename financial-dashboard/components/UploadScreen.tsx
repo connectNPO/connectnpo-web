@@ -34,7 +34,7 @@ export function UploadScreen({ onParsed }: UploadScreenProps) {
   }
 
   return (
-    <main className="min-h-screen bg-white flex items-center justify-center px-6">
+    <main className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-xl">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-foreground">Financial Dashboard</h1>

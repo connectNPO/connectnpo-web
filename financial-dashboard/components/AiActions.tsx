@@ -90,17 +90,18 @@ export function AiActions({ workbook }: AiActionsProps) {
           const isLoading = loadingType === action.type;
           const isActive = result?.type === action.type && status === 'success';
           const primary = action.primary ?? false;
-          const baseClass = primary
+          // Black when this button's result is showing, OR on initial state if primary
+          const isSelected = isActive || (!result && primary);
+          const baseClass = isSelected
             ? 'bg-foreground text-white hover:bg-gray-800'
             : 'border border-border bg-white hover:bg-gray-50';
-          const activeRing = isActive ? 'ring-2 ring-offset-1 ring-foreground/20' : '';
           return (
             <button
               key={action.type}
               type="button"
               onClick={() => runAction(action)}
               disabled={status === 'loading'}
-              className={`text-sm rounded-lg px-4 py-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${baseClass} ${activeRing}`}
+              className={`text-sm rounded-lg px-4 py-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${baseClass}`}
             >
               {isLoading ? 'Generating…' : action.label}
             </button>
@@ -157,13 +158,14 @@ export function AiActions({ workbook }: AiActionsProps) {
 
 function MarkdownRenderer({ text }: { text: string }) {
   const lines = text.split('\n');
-  const elements: React.ReactNode[] = [];
+  const sections: React.ReactNode[] = [];
+  let current: React.ReactNode[] = [];
   let bulletBuffer: string[] = [];
   let key = 0;
 
   const flushBullets = () => {
     if (bulletBuffer.length > 0) {
-      elements.push(
+      current.push(
         <ul key={key++} className="list-disc ml-5 mb-4 space-y-1 text-sm text-foreground">
           {bulletBuffer.map((b, i) => (
             <li key={i}>{renderInline(b)}</li>
@@ -174,6 +176,18 @@ function MarkdownRenderer({ text }: { text: string }) {
     }
   };
 
+  const flushSection = () => {
+    flushBullets();
+    if (current.length > 0) {
+      sections.push(
+        <div key={`sec-${sections.length}`} className="pdf-avoid-break">
+          {current}
+        </div>,
+      );
+      current = [];
+    }
+  };
+
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) {
@@ -181,32 +195,32 @@ function MarkdownRenderer({ text }: { text: string }) {
       continue;
     }
     if (line === '---') {
-      flushBullets();
-      elements.push(<hr key={key++} className="my-5 border-border" />);
+      flushSection();
+      sections.push(<hr key={`hr-${sections.length}`} className="my-5 border-border" />);
     } else if (line.startsWith('### Q:')) {
-      flushBullets();
-      elements.push(
+      flushSection();
+      current.push(
         <div key={key++} className="mt-5 first:mt-0 text-sm font-semibold text-foreground">
           Q: {renderInline(line.slice(6).trim())}
         </div>,
       );
     } else if (line.startsWith('### ')) {
-      flushBullets();
-      elements.push(
+      flushSection();
+      current.push(
         <h3 key={key++} className="text-sm font-semibold text-foreground mt-5 mb-2 first:mt-0">
           {line.slice(4)}
         </h3>,
       );
     } else if (line.startsWith('## ')) {
-      flushBullets();
-      elements.push(
+      flushSection();
+      current.push(
         <h2 key={key++} className="text-base font-semibold text-foreground mt-6 mb-3 first:mt-0">
           {line.slice(3)}
         </h2>,
       );
     } else if (line.startsWith('# ')) {
-      flushBullets();
-      elements.push(
+      flushSection();
+      current.push(
         <h1 key={key++} className="text-lg font-semibold text-foreground mb-3 first:mt-0">
           {line.slice(2)}
         </h1>,
@@ -215,16 +229,16 @@ function MarkdownRenderer({ text }: { text: string }) {
       bulletBuffer.push(line.slice(2));
     } else {
       flushBullets();
-      elements.push(
+      current.push(
         <p key={key++} className="text-sm text-foreground mb-3 leading-relaxed">
           {renderInline(line)}
         </p>,
       );
     }
   }
-  flushBullets();
+  flushSection();
 
-  return <div>{elements}</div>;
+  return <div>{sections}</div>;
 }
 
 function renderInline(text: string): React.ReactNode {

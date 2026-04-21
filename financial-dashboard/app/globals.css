@@ -19,6 +19,25 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Used by html2pdf.js to prevent splitting cards across pages */
+.pdf-avoid-break {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.pdf-break-before {
+  page-break-before: always;
+  break-before: page;
+}
+
+/* Prevent headings from being orphaned at the bottom of a PDF page */
+h1,
+h2,
+h3 {
+  page-break-after: avoid;
+  break-after: avoid;
+}
+
 @media print {
   @page {
     size: A4;

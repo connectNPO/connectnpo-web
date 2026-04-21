@@ -38,11 +38,15 @@ export function PageHeader({ orgName, period, onReset }: PageHeaderProps) {
           html2canvas: {
             scale: 2,
             useCORS: true,
-            backgroundColor: '#ffffff',
+            backgroundColor: '#f8f8f6',
             ignoreElements: (el: Element) => el.classList?.contains('no-print'),
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+          pagebreak: {
+            mode: ['css', 'legacy'],
+            avoid: '.pdf-avoid-break',
+            before: '.pdf-break-before',
+          },
         })
         .from(element)
         .save();
@@ -53,7 +57,7 @@ export function PageHeader({ orgName, period, onReset }: PageHeaderProps) {
   }
 
   return (
-    <header className="border-b border-border">
+    <header className="border-b border-border pdf-avoid-break">
       <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-foreground">{orgName}</h1>

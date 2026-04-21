@@ -12,7 +12,7 @@ const config: Config = {
         border: '#eaeaea',
         muted: '#666',
         foreground: '#000',
-        background: '#fff',
+        background: '#f8f8f6',
         success: '#0070f3',
         positive: '#0a7d32',
         negative: '#c0392b',

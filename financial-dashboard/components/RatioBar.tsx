@@ -53,7 +53,7 @@ export function RatioBar({ title, items, footnote, footnoteTone }: RatioBarProps
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   return (
-    <div className="border border-border rounded-xl p-6 bg-white">
+    <div className="border border-border rounded-xl p-6 bg-white pdf-avoid-break">
       <div className="text-xs uppercase tracking-wider text-muted font-medium mb-5">{title}</div>
       <div className="space-y-4">
         {items.map((item, idx) => {

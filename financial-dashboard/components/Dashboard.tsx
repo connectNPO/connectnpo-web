@@ -190,7 +190,7 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
   });
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
       <PageHeader orgName={orgName} period={period} onReset={onReset} />
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 print:single-col">
@@ -233,7 +233,7 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
           </section>
         )}
 
-        <section className="pt-2 print:break-before">
+        <section className="pt-2 print:break-before pdf-break-before">
           <AiActions workbook={workbook} />
         </section>
       </div>

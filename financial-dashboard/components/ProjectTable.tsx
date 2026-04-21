@@ -34,7 +34,7 @@ export function ProjectTable({ projects }: ProjectTableProps) {
   const maxAbs = Math.max(...projects.map((p) => Math.abs(p.netRevenue)));
 
   return (
-    <div className="border border-border rounded-xl bg-white overflow-hidden">
+    <div className="border border-border rounded-xl bg-white overflow-hidden pdf-avoid-break">
       <div className="px-6 pt-6 pb-4 border-b border-border">
         <div className="text-xs uppercase tracking-wider text-muted font-medium">
           Project Profitability
