@@ -55,28 +55,51 @@ export function isSubtotalLabel(label: string): boolean {
 export function detectReportType(sheetName: string, headerText?: string): ReportType {
   const name = sheetName.toLowerCase();
   const header = (headerText || '').toLowerCase();
+  const both = `${name} ${header}`;
 
+  // Balance Sheet
   if (
-    name.includes('financial position') ||
-    name.includes('balance sheet') ||
-    header.includes('statement of financial position') ||
-    header.includes('balance sheet')
+    both.includes('balance sheet') ||
+    both.includes('statement of financial position') ||
+    both.includes('statement of assets')
   ) {
     return 'balance_sheet';
   }
 
-  if (header.includes('statement of activity by class') || name.includes('by class')) {
+  // P&L by Class — check before generic P&L so "by class" wins
+  if (
+    both.includes('by class') ||
+    both.includes('by program') ||
+    both.includes('by department') ||
+    both.includes('by fund') ||
+    both.includes('statement of functional expenses') ||
+    header.includes('statement of activity by class')
+  ) {
     return 'profit_loss_by_class';
   }
 
+  // Project P&L — check before generic P&L
   if (
-    header.includes('project profitability') ||
+    both.includes('project profitability') ||
+    both.includes('by project') ||
+    both.includes('by customer') ||
     header.includes('statement of activity by custom')
   ) {
     return 'project_profit_loss';
   }
 
-  if (header.includes('statement of activity') || name === 'p&l' || name.includes('p & l')) {
+  // Profit & Loss (generic)
+  if (
+    both.includes('profit and loss') ||
+    both.includes('profit & loss') ||
+    both.includes('income statement') ||
+    both.includes('statement of activity') ||
+    both.includes('statement of activities') ||
+    both.includes('statement of operations') ||
+    both.includes('revenue and expense') ||
+    name === 'p&l' ||
+    name.includes('p & l')
+  ) {
     return 'profit_loss';
   }
 

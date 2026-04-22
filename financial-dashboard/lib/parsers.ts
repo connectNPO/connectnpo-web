@@ -77,17 +77,18 @@ export function parseBalanceSheet(rows: Row[], sheetName: string): BalanceSheet 
     totalLiabilitiesAndEquity: 0,
   };
 
-  const SECTION_HEADERS = new Set([
-    'Bank Accounts',
-    'Accounts Receivable',
-    'Other Current Assets',
-    'Accounts Payable',
-    'Credit Cards',
-    'Other Current Liabilities',
-  ]);
-
   type Section = 'none' | 'current_assets' | 'fixed_assets' | 'other_assets' | 'liabilities' | 'equity';
   let section: Section = 'none';
+
+  function pushLine(line: AccountLine) {
+    switch (section) {
+      case 'current_assets': assets.currentAssets.push(line); break;
+      case 'fixed_assets': assets.fixedAssets.push(line); break;
+      case 'other_assets': assets.otherAssets.push(line); break;
+      case 'liabilities': liabilities.currentLiabilities.push(line); break;
+      case 'equity': equity.lines.push(line); break;
+    }
+  }
 
   for (const row of rows) {
     if (!nonEmpty(row)) continue;
@@ -97,6 +98,7 @@ export function parseBalanceSheet(rows: Row[], sheetName: string): BalanceSheet 
     const amount = row[1];
     const memo = row[2];
 
+    // Section switches (Assets / Current Assets / Liabilities / Equity) — not rendered.
     if (labelClean === 'Assets') continue;
     if (labelClean === 'Current Assets') { section = 'current_assets'; continue; }
     if (labelClean === 'Fixed Assets') { section = 'fixed_assets'; continue; }
@@ -105,55 +107,49 @@ export function parseBalanceSheet(rows: Row[], sheetName: string): BalanceSheet 
     if (labelClean === 'Current Liabilities') { section = 'liabilities'; continue; }
     if (labelClean === 'Equity') { section = 'equity'; continue; }
 
-    if (SECTION_HEADERS.has(labelClean)) continue;
-
-    if (labelClean === 'Total for Current Assets') {
-      totals.totalCurrentAssets = toNumber(amount);
-      continue;
-    }
-    if (labelClean === 'Total for Fixed Assets') {
-      totals.totalFixedAssets = toNumber(amount);
-      continue;
-    }
-    if (labelClean === 'Total for Other Assets') {
-      totals.totalOtherAssets = toNumber(amount);
-      continue;
-    }
-    if (labelClean === 'Total for Assets') {
-      totals.totalAssets = toNumber(amount);
-      assets.total = totals.totalAssets;
-      continue;
-    }
-    if (labelClean === 'Total for Current Liabilities') {
-      totals.totalCurrentLiabilities = toNumber(amount);
-      continue;
-    }
-    if (labelClean === 'Total for Liabilities') {
-      totals.totalLiabilities = toNumber(amount);
-      liabilities.total = totals.totalLiabilities;
-      continue;
-    }
-    if (labelClean === 'Total for Equity') {
-      totals.totalEquity = toNumber(amount);
-      equity.total = totals.totalEquity;
-      continue;
-    }
-    if (labelClean === 'Total for Liabilities and Equity') {
-      totals.totalLiabilitiesAndEquity = toNumber(amount);
-      continue;
-    }
-
-    if (labelClean.startsWith('Total for ')) continue;
+    // QuickBooks report footer noise.
     if (labelClean.includes('Accrual Basis') || labelClean.includes('GMT')) continue;
 
-    const line = toAccountLine(label, amount, memo);
+    // Extract mapped totals into the totals object (and still push the line for rendering).
+    if (labelClean === 'Total for Current Assets') {
+      totals.totalCurrentAssets = toNumber(amount);
+    } else if (labelClean === 'Total for Fixed Assets') {
+      totals.totalFixedAssets = toNumber(amount);
+    } else if (labelClean === 'Total for Other Assets') {
+      totals.totalOtherAssets = toNumber(amount);
+    } else if (labelClean === 'Total for Assets') {
+      totals.totalAssets = toNumber(amount);
+      assets.total = totals.totalAssets;
+    } else if (labelClean === 'Total for Current Liabilities') {
+      totals.totalCurrentLiabilities = toNumber(amount);
+    } else if (labelClean === 'Total for Liabilities') {
+      totals.totalLiabilities = toNumber(amount);
+      liabilities.total = totals.totalLiabilities;
+    } else if (labelClean === 'Total for Equity') {
+      totals.totalEquity = toNumber(amount);
+      equity.total = totals.totalEquity;
+    } else if (labelClean === 'Total for Liabilities and Equity') {
+      totals.totalLiabilitiesAndEquity = toNumber(amount);
+    }
 
-    switch (section) {
-      case 'current_assets': assets.currentAssets.push(line); break;
-      case 'fixed_assets': assets.fixedAssets.push(line); break;
-      case 'other_assets': assets.otherAssets.push(line); break;
-      case 'liabilities': liabilities.currentLiabilities.push(line); break;
-      case 'equity': equity.lines.push(line); break;
+    // Detect group headers: no amount, no account number, not a "Total" label.
+    const hasAmountCell =
+      amount !== null && amount !== undefined && String(amount).trim() !== '';
+    const accountNum = extractAccountNumber(label);
+    const isGroupHeader =
+      !hasAmountCell && !accountNum && !isSubtotalLabel(labelClean);
+
+    if (isGroupHeader) {
+      pushLine({
+        accountName: labelClean,
+        amount: 0,
+        indentLevel: indentLevel(label),
+        isSubtotal: false,
+        isSectionHeader: true,
+        memo: memo ? String(memo).trim() : undefined,
+      });
+    } else {
+      pushLine(toAccountLine(label, amount, memo));
     }
   }
 
@@ -248,7 +244,23 @@ export function parseProfitLoss(rows: Row[], sheetName: string): ProfitLoss {
     }
     if (label.includes('Accrual Basis') || label.includes('GMT')) continue;
 
-    const line = toAccountLine(String(row[0]), amount, memo);
+    const rawLabel = String(row[0]);
+    const hasAmountCell =
+      amount !== null && amount !== undefined && String(amount).trim() !== '';
+    const accountNum = extractAccountNumber(rawLabel);
+    const isGroupHeader =
+      !hasAmountCell && !accountNum && !isSubtotalLabel(label);
+
+    const line: AccountLine = isGroupHeader
+      ? {
+          accountName: label,
+          amount: 0,
+          indentLevel: indentLevel(rawLabel),
+          isSubtotal: false,
+          isSectionHeader: true,
+          memo: memo ? String(memo).trim() : undefined,
+        }
+      : toAccountLine(rawLabel, amount, memo);
 
     switch (section) {
       case 'revenue': result.revenue.push(line); break;

@@ -18,6 +18,8 @@ export interface AccountLine {
   amount: number;
   indentLevel: number;
   isSubtotal: boolean;
+  /** Group headers like "Bank Accounts", "Other Current Liabilities" — no amount, structural only. */
+  isSectionHeader?: boolean;
   memo?: string;
 }
 

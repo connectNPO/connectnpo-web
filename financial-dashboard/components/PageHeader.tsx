@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -98,6 +99,12 @@ export function PageHeader({ orgName, period, onReset }: PageHeaderProps) {
               Upload new file
             </button>
           )}
+          <Link
+            href="/statements"
+            className="text-sm border border-border rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
+          >
+            Statements
+          </Link>
           <button
             type="button"
             onClick={handleExport}
