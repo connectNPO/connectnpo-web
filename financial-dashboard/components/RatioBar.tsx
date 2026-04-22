@@ -60,7 +60,7 @@ export function RatioBar({ title, items, footnote, footnoteTone }: RatioBarProps
           const canExpand = !!item.breakdown && item.breakdown.length > 0;
           const isExpanded = expandedIdx === idx;
           return (
-            <div key={item.label}>
+            <div key={item.label} className="pdf-avoid-break">
               <button
                 type="button"
                 onClick={() => canExpand && setExpandedIdx(isExpanded ? null : idx)}

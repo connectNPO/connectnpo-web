@@ -8,12 +8,17 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [orgName, setOrgName] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [sent, setSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!agreed) {
+      setError('Please agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -111,6 +116,37 @@ export default function SignupPage() {
               disabled={loading}
             />
           </div>
+
+          <label className="flex items-start gap-2 text-sm text-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              disabled={loading}
+              className="mt-0.5 shrink-0"
+            />
+            <span>
+              I agree to the{' '}
+              <Link
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-gray-800"
+              >
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-gray-800"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
 
           {error && (
             <div className="text-sm text-negative bg-red-50 border border-negative/30 rounded-lg px-3 py-2">

@@ -1,11 +1,102 @@
 import type {
+  AccountLine,
   BalanceSheet,
+  CategoryBreakdown,
   DerivedMetrics,
   ParsedReport,
   ProfitLoss,
   ProfitLossByClass,
   ProjectProfitLoss,
 } from './types';
+
+const GRAND_TOTAL_PATTERN = /^Total (for )?(Revenue|Income|Expenditures|Expense|Expenses)$/i;
+
+function buildGenericBreakdown(sections: AccountLine[][], total: number): CategoryBreakdown[] {
+  const denom = Math.abs(total);
+  if (!denom) return [];
+
+  const allLines = sections.flat();
+  const TOP = 8;
+
+  const subtotals = allLines.filter(
+    (l) => l.isSubtotal && l.amount !== 0 && !GRAND_TOTAL_PATTERN.test(l.accountName.trim()),
+  );
+
+  // Subtotal-based path: QBO CoA with category groupings (Grants / Contributions / etc.).
+  if (subtotals.length > 0) {
+    const minIndent = Math.min(...subtotals.map((l) => l.indentLevel));
+    const categories = subtotals
+      .filter((l) => l.indentLevel === minIndent)
+      .map((l) => ({
+        label: l.accountName.replace(/^Total (for )?/i, ''),
+        amount: l.amount,
+        accountNumber: l.accountNumber,
+      }))
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+
+    if (categories.length === 0) return [];
+
+    const primary = categories.length > TOP ? categories.slice(0, TOP - 1) : categories;
+    const overflow = categories.length > TOP ? categories.slice(TOP - 1) : [];
+
+    const result: CategoryBreakdown[] = primary.map((c) => {
+      const prefix = c.accountNumber ? c.accountNumber.slice(0, 2) : undefined;
+      const children = prefix
+        ? allLines
+            .filter(
+              (l) =>
+                !l.isSubtotal &&
+                l.amount !== 0 &&
+                l.accountNumber &&
+                l.accountNumber.startsWith(prefix),
+            )
+            .map((l) => ({ label: l.accountName, amount: l.amount }))
+        : [];
+      return {
+        label: c.label,
+        value: Math.abs(c.amount) / denom,
+        amount: c.amount,
+        breakdown: children.length > 0 ? children : undefined,
+      };
+    });
+
+    if (overflow.length > 0) {
+      const otherAmount = overflow.reduce((s, c) => s + c.amount, 0);
+      result.push({
+        label: 'Other',
+        value: Math.abs(otherAmount) / denom,
+        amount: otherAmount,
+        breakdown: overflow.map((c) => ({ label: c.label, amount: c.amount })),
+      });
+    }
+    return result;
+  }
+
+  // Flat CoA fallback: no subtotals, so each line item becomes a category.
+  const lines = allLines
+    .filter((l) => !l.isSubtotal && l.amount !== 0)
+    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  if (lines.length === 0) return [];
+
+  const primary = lines.length > TOP ? lines.slice(0, TOP - 1) : lines;
+  const overflow = lines.length > TOP ? lines.slice(TOP - 1) : [];
+
+  const result: CategoryBreakdown[] = primary.map((l) => ({
+    label: l.accountName,
+    value: Math.abs(l.amount) / denom,
+    amount: l.amount,
+  }));
+  if (overflow.length > 0) {
+    const otherAmount = overflow.reduce((s, l) => s + l.amount, 0);
+    result.push({
+      label: 'Other',
+      value: Math.abs(otherAmount) / denom,
+      amount: otherAmount,
+      breakdown: overflow.map((l) => ({ label: l.accountName, amount: l.amount })),
+    });
+  }
+  return result;
+}
 
 function monthsInPeriod(periodLabel: string): number {
   const match = periodLabel.match(/([A-Za-z]+)\s+\d+,?\s*(\d{4})\s*-\s*([A-Za-z]+)\s+\d+,?\s*(\d{4})/);
@@ -62,6 +153,21 @@ export function deriveMetrics(reports: ParsedReport[]): DerivedMetrics {
       if (metrics.cashOnHand && metrics.monthlyBurnRate > 0) {
         metrics.monthsOfRunway = metrics.cashOnHand / metrics.monthlyBurnRate;
       }
+    }
+
+    const revenueTotal = pl.totals.totalRevenue + pl.totals.totalOtherRevenue;
+    if (revenueTotal !== 0) {
+      const breakdown = buildGenericBreakdown([pl.revenue, pl.otherRevenue], revenueTotal);
+      if (breakdown.length > 0) metrics.revenueBreakdown = breakdown;
+    }
+
+    const expenseTotal = pl.totals.totalExpenditures + pl.totals.totalOtherExpenditures;
+    if (expenseTotal !== 0) {
+      const breakdown = buildGenericBreakdown(
+        [pl.expenditures, pl.otherExpenditures],
+        expenseTotal,
+      );
+      if (breakdown.length > 0) metrics.expenseBreakdown = breakdown;
     }
   }
 

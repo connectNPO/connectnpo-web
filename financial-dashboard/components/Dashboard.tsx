@@ -269,6 +269,18 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
           )}
         </section>
 
+        {((m.revenueBreakdown?.length ?? 0) > 0 ||
+          (m.expenseBreakdown?.length ?? 0) > 0) && (
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4 print:single-col">
+            {(m.revenueBreakdown?.length ?? 0) > 0 && (
+              <RatioBar title="Revenue Breakdown" items={m.revenueBreakdown as RatioItem[]} />
+            )}
+            {(m.expenseBreakdown?.length ?? 0) > 0 && (
+              <RatioBar title="Expense Breakdown" items={m.expenseBreakdown as RatioItem[]} />
+            )}
+          </section>
+        )}
+
         {projectsWithBreakdown.length > 0 && (
           <section>
             <ProjectTable projects={projectsWithBreakdown} />

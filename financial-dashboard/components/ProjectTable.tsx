@@ -49,7 +49,7 @@ export function ProjectTable({ projects }: ProjectTableProps) {
           const isExpanded = expandedIdx === idx;
 
           return (
-            <div key={idx} className="border-b border-border last:border-b-0">
+            <div key={idx} className="border-b border-border last:border-b-0 pdf-avoid-break">
               <button
                 type="button"
                 onClick={() => canExpand && setExpandedIdx(isExpanded ? null : idx)}

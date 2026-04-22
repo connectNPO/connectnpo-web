@@ -115,6 +115,18 @@ export interface WorkbookResult {
   derivedMetrics?: DerivedMetrics;
 }
 
+export interface BreakdownLine {
+  label: string;
+  amount: number;
+}
+
+export interface CategoryBreakdown {
+  label: string;
+  value: number;
+  amount: number;
+  breakdown?: BreakdownLine[];
+}
+
 export interface DerivedMetrics {
   cashOnHand?: number;
   unrestrictedCashEstimate?: number;
@@ -132,4 +144,6 @@ export interface DerivedMetrics {
   monthlyBurnRate?: number;
   monthsOfRunway?: number;
   projectProfitability?: { name: string; netRevenue: number }[];
+  revenueBreakdown?: CategoryBreakdown[];
+  expenseBreakdown?: CategoryBreakdown[];
 }

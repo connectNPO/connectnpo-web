@@ -91,9 +91,9 @@ export function UploadScreen({ onParsed }: UploadScreenProps) {
             const file = e.dataTransfer.files[0];
             if (file) handleFile(file);
           }}
-          className={`block border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
+          className={`block border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors bg-white ${
             dragging
-              ? 'border-foreground bg-gray-50'
+              ? 'border-foreground'
               : 'border-border hover:border-gray-300'
           } ${uploading ? 'opacity-60 pointer-events-none' : ''}`}
         >
@@ -129,35 +129,6 @@ export function UploadScreen({ onParsed }: UploadScreenProps) {
         {error && (
           <div className="mt-4 border border-negative/30 bg-red-50 rounded-xl p-4 text-sm text-negative">
             {error}
-          </div>
-        )}
-
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={async () => {
-                setError('');
-                setUploading(true);
-                try {
-                  const response = await fetch('/api/sample');
-                  const data = await response.json();
-                  if (!response.ok) {
-                    setError(data.error ?? 'Failed to load sample.');
-                    return;
-                  }
-                  onParsed(data as WorkbookResult);
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : 'Failed to load sample.');
-                } finally {
-                  setUploading(false);
-                }
-              }}
-              className="text-xs text-muted underline hover:text-foreground"
-              disabled={uploading}
-            >
-              Or try with sample data (dev only)
-            </button>
           </div>
         )}
       </div>

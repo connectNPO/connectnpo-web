@@ -19,6 +19,21 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Legal document (ToS/Privacy) — light prose styling */
+.prose-legal ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.prose-legal ul li {
+  margin-top: 0.25rem;
+}
+.prose-legal code {
+  background: #f2f2ef;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
 /* Used by html2pdf.js to prevent splitting cards across pages */
 .pdf-avoid-break {
   page-break-inside: avoid;
