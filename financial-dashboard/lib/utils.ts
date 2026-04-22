@@ -30,8 +30,13 @@ export function cleanLabel(label: string): string {
 
 export function extractAccountNumber(label: string): string | undefined {
   const trimmed = label.trim();
-  const match = trimmed.match(/^(\d{3,4})\s+/);
-  return match ? match[1] : undefined;
+  // Normal account line: "4000 Grants"
+  const normal = trimmed.match(/^(\d{3,4})\s+/);
+  if (normal) return normal[1];
+  // Subtotal rows: "Total for 4000 Grants" or "Total 4000 Grants"
+  const subtotal = trimmed.match(/^Total (?:for )?(\d{3,4})\s+/i);
+  if (subtotal) return subtotal[1];
+  return undefined;
 }
 
 export function isSubtotalLabel(label: string): boolean {

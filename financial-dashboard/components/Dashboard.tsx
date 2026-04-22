@@ -57,7 +57,9 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
     if (relevantClasses.length === 0) return undefined;
 
     const expenseRows = plClass.rows.filter(
-      (r) => !r.isSubtotal && r.accountNumber && r.accountNumber.startsWith('5'),
+      // Expense accounts conventionally start with 5, 6, 7, 8, or 9
+      // (Revenue = 4xxx, Assets/Liabilities/Equity = 1xxx-3xxx).
+      (r) => !r.isSubtotal && r.accountNumber && /^[5-9]/.test(r.accountNumber),
     );
 
     const lines: { label: string; amount: number }[] = [];
