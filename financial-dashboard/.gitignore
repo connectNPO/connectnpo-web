@@ -7,3 +7,8 @@ output/
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
+
+# Only the anonymized ABC Organization sample is tracked.
+# All other xlsx files (real client data) must stay local only.
+samples/*.xlsx
+!samples/abc-org-july-march-2026.xlsx

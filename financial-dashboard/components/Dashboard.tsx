@@ -130,42 +130,82 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
     const totalRev = pl.totals.totalRevenue;
 
     if (totalRev > 0) {
-      if (restricted) {
-        revenueItems.push({
-          label: 'Restricted Contributions',
-          value: restricted.amount / totalRev,
-          amount: restricted.amount,
-          tone: 'warning',
-          breakdown: [{ label: restricted.accountName, amount: restricted.amount }],
-        });
-      }
-      if (unrestricted) {
-        revenueItems.push({
-          label: 'Unrestricted Contributions',
-          value: unrestricted.amount / totalRev,
-          amount: unrestricted.amount,
-          breakdown: [{ label: unrestricted.accountName, amount: unrestricted.amount }],
-        });
-      }
-      if (programFeesSubtotal && programFeesSubtotal.amount > 0) {
-        revenueItems.push({
-          label: 'Program Service Fees',
-          value: programFeesSubtotal.amount / totalRev,
-          amount: programFeesSubtotal.amount,
-          breakdown: programFeesChildren.map((l) => ({
-            label: l.accountName,
+      if (restricted || unrestricted || (programFeesSubtotal && programFeesSubtotal.amount > 0)) {
+        // Known FASB-style taxonomy (Restricted / Unrestricted / Program Fees)
+        if (restricted) {
+          revenueItems.push({
+            label: 'Restricted Contributions',
+            value: restricted.amount / totalRev,
+            amount: restricted.amount,
+            tone: 'warning',
+            breakdown: [{ label: restricted.accountName, amount: restricted.amount }],
+          });
+        }
+        if (unrestricted) {
+          revenueItems.push({
+            label: 'Unrestricted Contributions',
+            value: unrestricted.amount / totalRev,
+            amount: unrestricted.amount,
+            breakdown: [{ label: unrestricted.accountName, amount: unrestricted.amount }],
+          });
+        }
+        if (programFeesSubtotal && programFeesSubtotal.amount > 0) {
+          revenueItems.push({
+            label: 'Program Service Fees',
+            value: programFeesSubtotal.amount / totalRev,
+            amount: programFeesSubtotal.amount,
+            breakdown: programFeesChildren.map((l) => ({
+              label: l.accountName,
+              amount: l.amount,
+            })),
+          });
+        }
+      } else {
+        // Fallback: use the top revenue category subtotals (e.g. "Total for Grants",
+        // "Total for General Fund") so clients with simpler CoAs still see a
+        // meaningful Revenue Composition card.
+        const categorySubtotals = pl.revenue
+          .filter((l) => l.isSubtotal && l.amount !== 0)
+          .map((l) => ({
+            label: l.accountName.replace(/^Total (for )?/i, ''),
+            rawLabel: l.accountName,
             amount: l.amount,
-          })),
-        });
+            accountNumber: l.accountNumber,
+          }))
+          .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          .slice(0, 4);
+
+        for (const cat of categorySubtotals) {
+          const children = pl.revenue.filter(
+            (l) =>
+              !l.isSubtotal &&
+              l.amount !== 0 &&
+              cat.accountNumber &&
+              l.accountNumber &&
+              l.accountNumber.startsWith(cat.accountNumber.slice(0, 2)),
+          );
+          revenueItems.push({
+            label: cat.label,
+            value: Math.abs(cat.amount) / totalRev,
+            amount: cat.amount,
+            breakdown:
+              children.length > 0
+                ? children.map((l) => ({ label: l.accountName, amount: l.amount }))
+                : undefined,
+          });
+        }
       }
     }
   }
 
-  const restrictedPct = revenueItems[0]?.value ?? 0;
+  const topPct = revenueItems[0]?.value ?? 0;
+  const topLabel = revenueItems[0]?.label?.toLowerCase() ?? '';
   const revenueFootnote =
-    restrictedPct > 0.8
-      ? `Heavy grant dependency — ${Math.round(restrictedPct * 100)}% of revenue is donor-restricted`
-      : undefined;
+    topPct > 0.8 && /restricted/.test(topLabel)
+      ? `Heavy grant dependency — ${Math.round(topPct * 100)}% of revenue is donor-restricted`
+      : topPct > 0.8
+        ? `Concentration risk — ${Math.round(topPct * 100)}% of revenue comes from a single category`
+        : undefined;
 
   // --- Project Profitability breakdowns ---
   const projectsWithBreakdown: Project[] = (m.projectProfitability ?? []).map((p) => {
@@ -222,7 +262,7 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
               title="Revenue Composition"
               items={revenueItems}
               footnote={revenueFootnote}
-              footnoteTone={restrictedPct > 0.8 ? 'warning' : 'neutral'}
+              footnoteTone={topPct > 0.8 ? 'warning' : 'neutral'}
             />
           )}
         </section>

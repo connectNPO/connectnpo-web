@@ -192,13 +192,17 @@ export function parseProfitLoss(rows: Row[], sheetName: string): ProfitLoss {
     const amount = row[1];
     const memo = row[2];
 
-    if (label === 'Revenue') { section = 'revenue'; continue; }
-    if (label === 'Expenditures') { section = 'expenditures'; continue; }
-    if (label === 'Other Revenue') { section = 'other_revenue'; continue; }
-    if (label === 'Other Expenditures') { section = 'other_expenditures'; continue; }
+    // QuickBooks uses "Revenue/Expenditures" OR "Income/Expenses" depending on CoA.
+    if (label === 'Revenue' || label === 'Income') { section = 'revenue'; continue; }
+    if (label === 'Expenditures' || label === 'Expenses') { section = 'expenditures'; continue; }
+    if (label === 'Other Revenue' || label === 'Other Income') { section = 'other_revenue'; continue; }
+    if (label === 'Other Expenditures' || label === 'Other Expenses') { section = 'other_expenditures'; continue; }
     if (label === 'Cost of Goods Sold') continue;
 
-    if (label === 'Total for Revenue' || label === 'Total Revenue') {
+    if (
+      label === 'Total for Revenue' || label === 'Total Revenue' ||
+      label === 'Total for Income' || label === 'Total Income'
+    ) {
       result.totals.totalRevenue = toNumber(amount);
       continue;
     }
@@ -209,27 +213,36 @@ export function parseProfitLoss(rows: Row[], sheetName: string): ProfitLoss {
       }
       continue;
     }
-    if (label === 'Total for Expenditures' || label === 'Total Expenditures') {
+    if (
+      label === 'Total for Expenditures' || label === 'Total Expenditures' ||
+      label === 'Total for Expenses' || label === 'Total Expenses'
+    ) {
       result.totals.totalExpenditures = toNumber(amount);
       continue;
     }
-    if (label === 'Net Operating Revenue') {
+    if (label === 'Net Operating Revenue' || label === 'Net Operating Income') {
       result.totals.netOperatingRevenue = toNumber(amount);
       continue;
     }
-    if (label === 'Total for Other Revenue' || label === 'Total Other Revenue') {
+    if (
+      label === 'Total for Other Revenue' || label === 'Total Other Revenue' ||
+      label === 'Total for Other Income' || label === 'Total Other Income'
+    ) {
       result.totals.totalOtherRevenue = toNumber(amount);
       continue;
     }
-    if (label === 'Total for Other Expenditures' || label === 'Total Other Expenditures') {
+    if (
+      label === 'Total for Other Expenditures' || label === 'Total Other Expenditures' ||
+      label === 'Total for Other Expenses' || label === 'Total Other Expenses'
+    ) {
       result.totals.totalOtherExpenditures = toNumber(amount);
       continue;
     }
-    if (label === 'Net Other Revenue') {
+    if (label === 'Net Other Revenue' || label === 'Net Other Income') {
       result.totals.netOtherRevenue = toNumber(amount);
       continue;
     }
-    if (label === 'Net Revenue') {
+    if (label === 'Net Revenue' || label === 'Net Income') {
       result.totals.netRevenue = toNumber(amount);
       continue;
     }
@@ -321,7 +334,13 @@ function calculateFunctionalRatio(
   rows: ProfitLossByClass['rows'],
   classes: string[],
 ): ProfitLossByClass['functionalExpenseRatio'] {
-  const totalExpRow = rows.find((r) => r.accountName === 'Total for Expenditures');
+  const totalExpRow = rows.find(
+    (r) =>
+      r.accountName === 'Total for Expenditures' ||
+      r.accountName === 'Total for Expenses' ||
+      r.accountName === 'Total Expenditures' ||
+      r.accountName === 'Total Expenses',
+  );
   if (!totalExpRow) return undefined;
 
   const programClass = classes.find((c) => /programs?/i.test(c) && /total/i.test(c));
