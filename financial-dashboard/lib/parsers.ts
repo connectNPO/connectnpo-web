@@ -367,7 +367,13 @@ function calculateFunctionalRatio(
       r.accountName === 'Total Other Expenses',
   );
 
-  const programClass = classes.find((c) => /programs?/i.test(c) && /total/i.test(c));
+  // Prefer "Total for ... Programs" (nested CoA where 100 Programs has sub-
+  // classes 110/120/130), but fall back to a flat "100 Programs" column for
+  // clients without sub-program breakdown. Without this fallback the card
+  // silently disappears on files that only have three top-level classes.
+  const programClass =
+    classes.find((c) => /programs?/i.test(c) && /total/i.test(c)) ||
+    classes.find((c) => /programs?/i.test(c) && !/^total/i.test(c));
   const adminClass = classes.find((c) => /management|general|admin/i.test(c));
   const fundraisingClass = classes.find((c) => /fundraising/i.test(c));
 

@@ -11,6 +11,148 @@ import type {
 
 const GRAND_TOTAL_PATTERN = /^Total (for )?(Revenue|Income|Expenditures|Expense|Expenses)$/i;
 
+/**
+ * Walk through the P&L line items in order and emit one category per logical
+ * grouping. Handles three QBO patterns that commonly appear in the same file:
+ *
+ *   1. Subtotal group — a category header with no amount ("5200 Contract &
+ *      Professional Fees"), child line items indented under it, and a
+ *      matching "Total for 5200 ..." trailer. Emit the trailer amount as the
+ *      category and keep the children as its accordion breakdown.
+ *
+ *   2. Standalone account — a numbered account with an amount that is NOT
+ *      wrapped in a subtotal group ("5430 Event Sponsorship Expense
+ *      $50,000"). Emit each as its own category. Without this branch the
+ *      amount would be silently dropped from the breakdown, which is how
+ *      $50K went missing on the Test Company file.
+ *
+ *   3. Flat CoA — a file with no subtotals at all. Every line item becomes
+ *      its own category (same as the current flat-fallback behavior).
+ *
+ * Every number that reaches the dashboard comes directly from an Excel cell;
+ * this function only decides how to group the rows, never what the numbers
+ * should be.
+ */
+function collectCategories(
+  allLines: AccountLine[],
+): { label: string; amount: number; accountNumber?: string; children: AccountLine[] }[] {
+  const categories: {
+    label: string;
+    amount: number;
+    accountNumber?: string;
+    children: AccountLine[];
+  }[] = [];
+
+  let pendingHeader: AccountLine | null = null;
+  let groupChildren: AccountLine[] = [];
+
+  const headerPrefix = (l: AccountLine) => l.accountNumber?.slice(0, 2);
+
+  function flushOrphanGroup() {
+    // An "open" group with no matching "Total for X" trailer. Emit collected
+    // children as standalone categories so their amounts are not lost.
+    for (const child of groupChildren) {
+      if (child.amount !== 0) {
+        categories.push({
+          label: child.accountName,
+          amount: child.amount,
+          accountNumber: child.accountNumber,
+          children: [],
+        });
+      }
+    }
+    pendingHeader = null;
+    groupChildren = [];
+  }
+
+  for (const line of allLines) {
+    const isGrandTotal =
+      line.isSubtotal && GRAND_TOTAL_PATTERN.test(line.accountName.trim());
+    if (isGrandTotal) continue; // Never emit the grand total line itself.
+
+    // Subtotal trailer that closes the currently open group ("Total for 5200
+    // Contract & Professional Fees" matching "5200 Contract & Professional
+    // Fees" header).
+    if (
+      line.isSubtotal &&
+      pendingHeader &&
+      headerPrefix(line) &&
+      headerPrefix(line) === headerPrefix(pendingHeader)
+    ) {
+      if (line.amount !== 0) {
+        categories.push({
+          label: line.accountName.replace(/^Total (for )?/i, ''),
+          amount: line.amount,
+          accountNumber: line.accountNumber,
+          children: groupChildren.filter((c) => c.amount !== 0),
+        });
+      }
+      pendingHeader = null;
+      groupChildren = [];
+      continue;
+    }
+
+    // Category header: a numbered row with no amount that is not itself a
+    // subtotal or section header. "5200 Contract & Professional Fees" with
+    // empty column B is the canonical example.
+    const isHeader =
+      !!line.accountNumber &&
+      !line.isSubtotal &&
+      !line.isSectionHeader &&
+      line.amount === 0;
+    if (isHeader) {
+      // If a previous group was still open without a matching trailer, flush
+      // it so we do not silently merge two unrelated groups.
+      if (pendingHeader) flushOrphanGroup();
+      pendingHeader = line;
+      groupChildren = [];
+      continue;
+    }
+
+    // Inside an open group: non-subtotal lines are collected as children;
+    // subtotals that do not match the header prefix are unexpected but are
+    // treated as closing-and-reopening events.
+    if (pendingHeader) {
+      if (!line.isSubtotal) {
+        groupChildren.push(line);
+      } else if (line.amount !== 0) {
+        // Unmatched subtotal — emit as its own category and keep the group
+        // open (rare: typically indicates a malformed P&L).
+        categories.push({
+          label: line.accountName.replace(/^Total (for )?/i, ''),
+          amount: line.amount,
+          accountNumber: line.accountNumber,
+          children: [],
+        });
+      }
+      continue;
+    }
+
+    // Outside any group: emit standalone accounts (the key fix) and any
+    // stray subtotals as their own categories.
+    if (line.isSubtotal) {
+      if (line.amount !== 0) {
+        categories.push({
+          label: line.accountName.replace(/^Total (for )?/i, ''),
+          amount: line.amount,
+          accountNumber: line.accountNumber,
+          children: [],
+        });
+      }
+    } else if (!line.isSectionHeader && line.amount !== 0) {
+      categories.push({
+        label: line.accountName,
+        amount: line.amount,
+        accountNumber: line.accountNumber,
+        children: [],
+      });
+    }
+  }
+
+  if (pendingHeader) flushOrphanGroup();
+  return categories;
+}
+
 function buildGenericBreakdown(sections: AccountLine[][], total: number): CategoryBreakdown[] {
   const denom = Math.abs(total);
   if (!denom) return [];
@@ -18,81 +160,32 @@ function buildGenericBreakdown(sections: AccountLine[][], total: number): Catego
   const allLines = sections.flat();
   const TOP = 8;
 
-  const subtotals = allLines.filter(
-    (l) => l.isSubtotal && l.amount !== 0 && !GRAND_TOTAL_PATTERN.test(l.accountName.trim()),
+  const categories = collectCategories(allLines).sort(
+    (a, b) => Math.abs(b.amount) - Math.abs(a.amount),
   );
 
-  // Subtotal-based path: QBO CoA with category groupings (Grants / Contributions / etc.).
-  if (subtotals.length > 0) {
-    const minIndent = Math.min(...subtotals.map((l) => l.indentLevel));
-    const categories = subtotals
-      .filter((l) => l.indentLevel === minIndent)
-      .map((l) => ({
-        label: l.accountName.replace(/^Total (for )?/i, ''),
-        amount: l.amount,
-        accountNumber: l.accountNumber,
-      }))
-      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  if (categories.length === 0) return [];
 
-    if (categories.length === 0) return [];
+  const primary = categories.length > TOP ? categories.slice(0, TOP - 1) : categories;
+  const overflow = categories.length > TOP ? categories.slice(TOP - 1) : [];
 
-    const primary = categories.length > TOP ? categories.slice(0, TOP - 1) : categories;
-    const overflow = categories.length > TOP ? categories.slice(TOP - 1) : [];
-
-    const result: CategoryBreakdown[] = primary.map((c) => {
-      const prefix = c.accountNumber ? c.accountNumber.slice(0, 2) : undefined;
-      const children = prefix
-        ? allLines
-            .filter(
-              (l) =>
-                !l.isSubtotal &&
-                l.amount !== 0 &&
-                l.accountNumber &&
-                l.accountNumber.startsWith(prefix),
-            )
-            .map((l) => ({ label: l.accountName, amount: l.amount }))
-        : [];
-      return {
-        label: c.label,
-        value: Math.abs(c.amount) / denom,
-        amount: c.amount,
-        breakdown: children.length > 0 ? children : undefined,
-      };
-    });
-
-    if (overflow.length > 0) {
-      const otherAmount = overflow.reduce((s, c) => s + c.amount, 0);
-      result.push({
-        label: 'Other',
-        value: Math.abs(otherAmount) / denom,
-        amount: otherAmount,
-        breakdown: overflow.map((c) => ({ label: c.label, amount: c.amount })),
-      });
-    }
-    return result;
-  }
-
-  // Flat CoA fallback: no subtotals, so each line item becomes a category.
-  const lines = allLines
-    .filter((l) => !l.isSubtotal && l.amount !== 0)
-    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
-  if (lines.length === 0) return [];
-
-  const primary = lines.length > TOP ? lines.slice(0, TOP - 1) : lines;
-  const overflow = lines.length > TOP ? lines.slice(TOP - 1) : [];
-
-  const result: CategoryBreakdown[] = primary.map((l) => ({
-    label: l.accountName,
-    value: Math.abs(l.amount) / denom,
-    amount: l.amount,
+  const result: CategoryBreakdown[] = primary.map((c) => ({
+    label: c.label,
+    value: Math.abs(c.amount) / denom,
+    amount: c.amount,
+    breakdown:
+      c.children.length > 0
+        ? c.children.map((l) => ({ label: l.accountName, amount: l.amount }))
+        : undefined,
   }));
+
   if (overflow.length > 0) {
-    const otherAmount = overflow.reduce((s, l) => s + l.amount, 0);
+    const otherAmount = overflow.reduce((s, c) => s + c.amount, 0);
     result.push({
       label: 'Other',
       value: Math.abs(otherAmount) / denom,
       amount: otherAmount,
-      breakdown: overflow.map((l) => ({ label: l.accountName, amount: l.amount })),
+      breakdown: overflow.map((c) => ({ label: c.label, amount: c.amount })),
     });
   }
   return result;

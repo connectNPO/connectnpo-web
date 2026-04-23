@@ -126,14 +126,29 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
     const programFeesSubtotal = pl.revenue.find(
       (l) => l.isSubtotal && /program service fees/i.test(l.accountName),
     );
-    const programFeesChildren = pl.revenue.filter(
-      (l) => !l.isSubtotal && l.accountNumber?.startsWith('42') && l.amount > 0,
-    );
+    // Match children by the Program Fees subtotal's own account-number prefix
+    // (first 2 digits) rather than a hardcoded "42". Some charts of accounts
+    // put Program Fees at 43xx, 44xx, etc., in which case the hardcoded
+    // filter would pair the wrong accounts with this subtotal.
+    const programFeesPrefix = programFeesSubtotal?.accountNumber?.slice(0, 2);
+    const programFeesChildren = programFeesPrefix
+      ? pl.revenue.filter(
+          (l) =>
+            !l.isSubtotal &&
+            l.amount > 0 &&
+            l.accountNumber?.startsWith(programFeesPrefix),
+        )
+      : [];
     const totalRev = pl.totals.totalRevenue;
 
     if (totalRev > 0) {
-      if (restricted || unrestricted || (programFeesSubtotal && programFeesSubtotal.amount > 0)) {
-        // Known FASB-style taxonomy (Restricted / Unrestricted / Program Fees)
+      // Only trigger the FASB path when the file has BOTH Restricted and
+      // Unrestricted line items (a real FASB-taxonomied CoA). If only one
+      // exists and is small (e.g. a single "Unrestricted $1,000" line
+      // while 98% of revenue sits under other subtotals), the FASB path
+      // would show 1.4% and hide the rest. Fall through to the subtotal-
+      // based path in that case so Revenue Composition stays complete.
+      if (restricted && unrestricted) {
         if (restricted) {
           revenueItems.push({
             label: 'Restricted Contributions',
