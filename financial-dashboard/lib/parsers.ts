@@ -355,15 +355,36 @@ function calculateFunctionalRatio(
   );
   if (!totalExpRow) return undefined;
 
+  // Also pick up "Total for Other Expenditures" — QBO parks depreciation and
+  // similar below-the-line items there, but for 990 Part IX functional
+  // reporting they belong in the Program / Admin / Fundraising totals
+  // alongside operating expenses.
+  const totalOtherExpRow = rows.find(
+    (r) =>
+      r.accountName === 'Total for Other Expenditures' ||
+      r.accountName === 'Total for Other Expenses' ||
+      r.accountName === 'Total Other Expenditures' ||
+      r.accountName === 'Total Other Expenses',
+  );
+
   const programClass = classes.find((c) => /programs?/i.test(c) && /total/i.test(c));
   const adminClass = classes.find((c) => /management|general|admin/i.test(c));
   const fundraisingClass = classes.find((c) => /fundraising/i.test(c));
 
   if (!programClass || !adminClass || !fundraisingClass) return undefined;
 
-  const program = Number(totalExpRow.byClass[programClass] ?? 0);
-  const admin = Number(totalExpRow.byClass[adminClass] ?? 0);
-  const fundraising = Number(totalExpRow.byClass[fundraisingClass] ?? 0);
+  const classAmount = (
+    row: ProfitLossByClass['rows'][number] | undefined,
+    cls: string,
+  ): number => (row ? Number(row.byClass[cls] ?? 0) : 0);
+
+  const program =
+    classAmount(totalExpRow, programClass) + classAmount(totalOtherExpRow, programClass);
+  const admin =
+    classAmount(totalExpRow, adminClass) + classAmount(totalOtherExpRow, adminClass);
+  const fundraising =
+    classAmount(totalExpRow, fundraisingClass) +
+    classAmount(totalOtherExpRow, fundraisingClass);
   const totalExpenses = program + admin + fundraising;
 
   if (totalExpenses === 0) return undefined;

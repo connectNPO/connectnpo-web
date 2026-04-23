@@ -269,17 +269,30 @@ export function Dashboard({ workbook, onReset }: DashboardProps) {
           )}
         </section>
 
-        {((m.revenueBreakdown?.length ?? 0) > 0 ||
-          (m.expenseBreakdown?.length ?? 0) > 0) && (
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-4 print:single-col">
-            {(m.revenueBreakdown?.length ?? 0) > 0 && (
-              <RatioBar title="Revenue Breakdown" items={m.revenueBreakdown as RatioItem[]} />
-            )}
-            {(m.expenseBreakdown?.length ?? 0) > 0 && (
-              <RatioBar title="Expense Breakdown" items={m.expenseBreakdown as RatioItem[]} />
-            )}
-          </section>
-        )}
+        {(() => {
+          // Revenue Breakdown duplicates Revenue Composition when the latter
+          // already renders (Revenue Composition has its own fallback path),
+          // so only show Revenue Breakdown when Revenue Composition is empty.
+          const showRevenueBreakdown =
+            revenueItems.length === 0 && (m.revenueBreakdown?.length ?? 0) > 0;
+          const showExpenseBreakdown = (m.expenseBreakdown?.length ?? 0) > 0;
+          if (!showRevenueBreakdown && !showExpenseBreakdown) return null;
+          // When Expense Breakdown is alone in the row, span both columns so
+          // the layout stays balanced with the 2-column rows above.
+          const expenseSpansFull = showExpenseBreakdown && !showRevenueBreakdown;
+          return (
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-4 print:single-col">
+              {showRevenueBreakdown && (
+                <RatioBar title="Revenue Breakdown" items={m.revenueBreakdown as RatioItem[]} />
+              )}
+              {showExpenseBreakdown && (
+                <div className={expenseSpansFull ? 'md:col-span-2' : ''}>
+                  <RatioBar title="Expense Breakdown" items={m.expenseBreakdown as RatioItem[]} />
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         {projectsWithBreakdown.length > 0 && (
           <section>
