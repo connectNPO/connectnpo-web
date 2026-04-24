@@ -8,15 +8,17 @@
   <meta property="og:title" content="990 Readiness Quiz - GivingArc">
   <meta property="og:description" content="Free 3-minute quiz. Instant score + personalized tips for nonprofit leaders.">
   <meta property="og:type" content="website">
+  <link rel="icon" type="image/svg+xml" href="ga-icon.svg">
+  <link rel="apple-touch-icon" href="ga-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="bg-[#f8f8f6] text-slate-900 min-h-screen">
   <header class="border-b border-slate-200 bg-white">
-    <div class="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
       <a href="https://givingarc.com/" aria-label="GivingArc home" class="inline-flex items-center">
         <img src="givingarc-logo.svg" alt="GivingArc" class="h-8 w-auto" />
       </a>
@@ -24,11 +26,11 @@
     </div>
   </header>
 
-  <main id="app" class="max-w-2xl mx-auto px-4 py-8 md:py-12">
+  <main id="app" class="max-w-[1200px] mx-auto px-6 py-8 md:py-12">
 
     <!-- ============ 1. LANDING ============ -->
     <section id="section-landing" class="section">
-      <div class="text-center">
+      <div class="text-center max-w-3xl mx-auto">
         <div class="inline-block px-3 py-1 mb-6 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">
           FREE - 3 MINUTES
         </div>
@@ -48,7 +50,7 @@
         </p>
       </div>
 
-      <div class="mt-16 grid md:grid-cols-3 gap-5">
+      <div class="mt-16 grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
         <div class="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-sm transition">
           <div class="w-11 h-11 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#2563eb" class="w-5 h-5">
@@ -82,7 +84,7 @@
     </section>
 
     <!-- ============ 2. ORG INFO ============ -->
-    <section id="section-org" class="section hidden">
+    <section id="section-org" class="section hidden max-w-2xl mx-auto">
       <h2 class="text-2xl font-bold text-[#0a2540] mb-2">Tell us about your nonprofit</h2>
       <p class="text-slate-600 mb-8">This helps us tailor your report.</p>
 
@@ -140,7 +142,7 @@
     </section>
 
     <!-- ============ 3. QUIZ ============ -->
-    <section id="section-quiz" class="section hidden">
+    <section id="section-quiz" class="section hidden max-w-2xl mx-auto">
       <div class="mb-8">
         <div class="flex justify-between text-sm text-slate-500 mb-2">
           <span id="progress-label">Question 1 of 18</span>
@@ -179,7 +181,7 @@
     </section>
 
     <!-- ============ 4. RESULTS ============ -->
-    <section id="section-results" class="section hidden">
+    <section id="section-results" class="section hidden max-w-2xl mx-auto">
       <div class="text-center mb-8">
         <p class="text-slate-600 mb-2">Your 990 Readiness Score</p>
         <div id="score-display" class="score-reveal">
@@ -276,8 +278,8 @@
   </main>
 
   <footer class="mt-16 py-8 border-t border-slate-200 text-center text-sm text-slate-500">
-    <div class="max-w-2xl mx-auto px-4">
-      <p><strong class="text-[#0a2540]">GivingArc</strong> - Bookkeeping &amp; 990 services for small nonprofits.</p>
+    <div class="max-w-[1200px] mx-auto px-6">
+      <p><a href="https://givingarc.com/" class="font-semibold text-[#0a2540] hover:underline">GivingArc</a> - Bookkeeping &amp; 990 services for small nonprofits.</p>
       <p class="mt-2">&copy; 2026 GivingArc. All rights reserved.</p>
     </div>
   </footer>
