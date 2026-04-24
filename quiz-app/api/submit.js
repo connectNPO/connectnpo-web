@@ -79,9 +79,11 @@ export default async function handler(req, res) {
     });
 
     try {
+      const fromEmail = process.env.FROM_EMAIL || process.env.GMAIL_USER;
       await transporter.sendMail({
-        from: `"${process.env.FROM_NAME || 'GivingArc'}" <${process.env.GMAIL_USER}>`,
+        from: `"${process.env.FROM_NAME || 'GivingArc'}" <${fromEmail}>`,
         to: email,
+        replyTo: fromEmail,
         subject: `Your 990 Readiness Report - ${orgName}`,
         html
       });
