@@ -183,6 +183,7 @@ document.getElementById('form-email').addEventListener('submit', async (e) => {
         score: state.score,
         grade: state.grade,
         weakCategories: state.weakCategories,
+        categoryScores: state.categoryScores,
         answers: state.answers.map((val, i) => ({
           questionId: QUESTIONS[i].id,
           value: val

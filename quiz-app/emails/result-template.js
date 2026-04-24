@@ -65,9 +65,11 @@ export function generateEmailHtml({ contactName, orgName, score, grade, weakCate
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background:#ffffff; border-radius:12px; overflow:hidden;">
 
           <tr>
-            <td style="background:#0a2540; padding:32px 32px 24px; text-align:center;">
-              <div style="color:#94a3b8; font-size:12px; letter-spacing:1px; margin-bottom:4px;">GIVINGARC</div>
-              <div style="color:#fff; font-size:24px; font-weight:700;">990 Readiness Report</div>
+            <td style="background:#0a2540; padding:28px 32px 24px; text-align:center;">
+              <a href="https://givingarc.com/" style="display:inline-block; text-decoration:none;">
+                <img src="https://quiz.givingarc.com/givingarc-logo.svg" alt="GivingArc" height="32" style="height:32px; width:auto; display:block; filter:brightness(0) invert(1);" />
+              </a>
+              <div style="color:#fff; font-size:22px; font-weight:600; margin-top:18px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">990 Readiness Report</div>
             </td>
           </tr>
 
